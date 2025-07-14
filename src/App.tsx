@@ -62,8 +62,8 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🔍 AI Visual Inspector</h1>
-        <p>Capture and analyze images with AI</p>
+        <h1>🔍 AI Visual Inspector v1.0</h1>
+        <p>Capture and analyze images with AI • Auto-deploy test ✅</p>
       </header>
 
       <main className="app-main">
