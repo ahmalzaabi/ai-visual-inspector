@@ -10,12 +10,22 @@ function App() {
   const [isGestureMode, setIsGestureMode] = useState(false)
   const [fingerCount, setFingerCount] = useState(0)
   const [handLandmarks, setHandLandmarks] = useState<any[]>([])
+  const [debugInfo, setDebugInfo] = useState<string>('')
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const startCamera = useCallback(async () => {
     try {
       setError(null)
+      setDebugInfo('🔄 Requesting camera access...')
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API not supported in this browser')
+      }
+
+      setDebugInfo('📱 Camera API supported, requesting permissions...')
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment', // Use back camera on mobile
@@ -24,13 +34,31 @@ function App() {
         }
       })
       
+      setDebugInfo('✅ Camera stream obtained')
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        setIsPlaying(true)
+        
+        // Add event listeners for video loading
+        videoRef.current.onloadedmetadata = () => {
+          setDebugInfo('📹 Video metadata loaded')
+          setIsPlaying(true)
+        }
+        
+        videoRef.current.onplay = () => {
+          setDebugInfo('▶️ Video is playing')
+        }
+        
+        videoRef.current.onerror = (e) => {
+          console.error('Video error:', e)
+          setError('Video playback error')
+          setDebugInfo('❌ Video playback failed')
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error accessing camera:', err)
-      setError('Unable to access camera. Please ensure camera permissions are granted.')
+      setError(`Camera Error: ${err.message}`)
+      setDebugInfo(`❌ ${err.message}`)
     }
   }, [])
 
@@ -41,6 +69,7 @@ function App() {
       videoRef.current.srcObject = null
       setIsPlaying(false)
       setIsGestureMode(false)
+      setDebugInfo('⏹️ Camera stopped')
     }
   }, [])
 
@@ -57,6 +86,7 @@ function App() {
         
         const imageData = canvas.toDataURL('image/jpeg', 0.8)
         setCapturedImage(imageData)
+        setDebugInfo('📸 Photo captured successfully')
       }
     }
   }, [])
@@ -66,22 +96,29 @@ function App() {
   }, [])
 
   const toggleGestureMode = useCallback(() => {
-    setIsGestureMode(!isGestureMode)
-    if (!isGestureMode) {
+    const newMode = !isGestureMode
+    setIsGestureMode(newMode)
+    if (newMode) {
       setCapturedImage(null) // Clear any captured images when entering gesture mode
+      setDebugInfo('🖐️ Gesture mode activated')
+    } else {
+      setDebugInfo('📷 Photo mode activated')
     }
   }, [isGestureMode])
 
   const handleGestureDetected = useCallback((count: number, landmarks: any[]) => {
     setFingerCount(count)
     setHandLandmarks(landmarks)
+    if (count > 0) {
+      setDebugInfo(`🖐️ ${count} finger${count > 1 ? 's' : ''} detected`)
+    }
   }, [])
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>🔍 AI Visual Inspector v1.0</h1>
-        <p>Capture and analyze images with AI • Auto-deploy test ✅</p>
+        <p>Capture and analyze images with AI • AR Gestures ✨</p>
         {isPlaying && (
           <div className="mode-toggle">
             <button 
@@ -101,11 +138,20 @@ function App() {
           </div>
         )}
 
+        {debugInfo && (
+          <div className="debug-info">
+            ℹ️ {debugInfo}
+          </div>
+        )}
+
         <div className="camera-container">
           {!isPlaying ? (
             <div className="camera-placeholder">
               <div className="camera-icon">📷</div>
               <p>Camera not active</p>
+              <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                Make sure to allow camera permissions
+              </p>
               <button 
                 className="btn btn-primary" 
                 onClick={startCamera}

@@ -27,6 +27,7 @@ const HandGestureTracker: React.FC<HandGestureTrackerProps> = ({
   const cameraRef = useRef<Camera | null>(null)
   const [fingerCount, setFingerCount] = useState<number>(0)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [mediaPipeError, setMediaPipeError] = useState<string | null>(null)
 
   // Finger tip and PIP joint indices for each finger
   const fingerLandmarks: FingerLandmarks = {
@@ -179,11 +180,25 @@ const HandGestureTracker: React.FC<HandGestureTrackerProps> = ({
 
     const initializeMediaPipe = async () => {
       try {
-        // Initialize MediaPipe Hands
+        console.log('🔄 Initializing MediaPipe...')
+        setMediaPipeError(null)
+        
+        // Initialize MediaPipe Hands with multiple CDN fallbacks
         const hands = new Hands({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+          locateFile: (file) => {
+            // Try multiple CDN sources
+            const cdnSources = [
+              `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+              `https://unpkg.com/@mediapipe/hands/${file}`,
+              `/node_modules/@mediapipe/hands/${file}` // Local fallback
+            ]
+            
+            console.log(`📥 Loading MediaPipe file: ${file}`)
+            return cdnSources[0] // Start with primary CDN
+          }
         })
 
+        console.log('⚙️ Setting MediaPipe options...')
         hands.setOptions({
           maxNumHands: 1,
           modelComplexity: 1,
@@ -194,32 +209,50 @@ const HandGestureTracker: React.FC<HandGestureTrackerProps> = ({
         hands.onResults(onResults)
         handsRef.current = hands
 
-        // Initialize camera
+        console.log('📹 Setting up camera...')
+        // Initialize camera with error handling
         if (videoRef.current) {
-          const camera = new Camera(videoRef.current, {
-            onFrame: async () => {
-              if (handsRef.current && videoRef.current) {
-                await handsRef.current.send({ image: videoRef.current })
-              }
-            },
-            width: 640,
-            height: 480
-          })
+          try {
+            const camera = new Camera(videoRef.current, {
+              onFrame: async () => {
+                if (handsRef.current && videoRef.current) {
+                  try {
+                    await handsRef.current.send({ image: videoRef.current })
+                  } catch (frameError) {
+                    console.warn('Frame processing error:', frameError)
+                  }
+                }
+              },
+              width: 640,
+              height: 480
+            })
 
-          cameraRef.current = camera
-          setIsInitialized(true)
+            cameraRef.current = camera
+            console.log('✅ MediaPipe initialized successfully')
+            setIsInitialized(true)
+          } catch (cameraError) {
+            console.error('Camera initialization error:', cameraError)
+            setMediaPipeError('Camera setup failed')
+          }
         }
-      } catch (error) {
-        console.error('Error initializing MediaPipe:', error)
+              } catch (error: any) {
+          console.error('❌ MediaPipe initialization error:', error)
+          setMediaPipeError(`MediaPipe failed to load: ${error.message || 'Unknown error'}`)
       }
     }
 
-    initializeMediaPipe()
+    // Add a small delay to ensure video is ready
+    const timer = setTimeout(initializeMediaPipe, 1000)
 
     // Cleanup
     return () => {
+      clearTimeout(timer)
       if (cameraRef.current) {
-        cameraRef.current.stop()
+        try {
+          cameraRef.current.stop()
+        } catch (e) {
+          console.warn('Camera stop error:', e)
+        }
       }
     }
   }, [isActive, videoRef, onResults, isInitialized])
@@ -227,13 +260,42 @@ const HandGestureTracker: React.FC<HandGestureTrackerProps> = ({
   // Start/stop camera based on active state
   useEffect(() => {
     if (isInitialized && cameraRef.current) {
-      if (isActive) {
-        cameraRef.current.start()
-      } else {
-        cameraRef.current.stop()
+      try {
+        if (isActive) {
+          console.log('▶️ Starting MediaPipe camera...')
+          cameraRef.current.start()
+        } else {
+          console.log('⏸️ Stopping MediaPipe camera...')
+          cameraRef.current.stop()
+        }
+              } catch (error: any) {
+          console.error('Camera control error:', error)
+          setMediaPipeError('Camera control failed')
       }
     }
   }, [isActive, isInitialized])
+
+  // Show error message if MediaPipe fails
+  if (mediaPipeError) {
+    return (
+      <div 
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          right: '10px',
+          background: 'rgba(255, 0, 0, 0.8)',
+          color: 'white',
+          padding: '0.5rem',
+          borderRadius: '8px',
+          fontSize: '0.8rem',
+          zIndex: 15
+        }}
+      >
+        ⚠️ Gesture tracking unavailable: {mediaPipeError}
+      </div>
+    )
+  }
 
   return (
     <canvas
