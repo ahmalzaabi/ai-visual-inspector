@@ -41,12 +41,25 @@ function App() {
         
         // Add event listeners for video loading
         videoRef.current.onloadedmetadata = () => {
-          setDebugInfo('📹 Video metadata loaded')
-          setIsPlaying(true)
+          setDebugInfo('📹 Video metadata loaded, starting playback...')
+          
+          // Ensure video starts playing
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              setDebugInfo('▶️ Video playing successfully!')
+              setIsPlaying(true)
+            }).catch((playError) => {
+              console.error('Video play error:', playError)
+              setDebugInfo('⚠️ Video play failed, but showing anyway')
+              // Still set playing to true since we have the stream
+              setIsPlaying(true)
+            })
+          }
         }
         
         videoRef.current.onplay = () => {
-          setDebugInfo('▶️ Video is playing')
+          setDebugInfo('🎬 Video play event fired')
+          setIsPlaying(true)
         }
         
         videoRef.current.onerror = (e) => {
@@ -54,13 +67,21 @@ function App() {
           setError('Video playback error')
           setDebugInfo('❌ Video playback failed')
         }
+
+        // Fallback: if video doesn't fire events within 3 seconds, show it anyway
+        setTimeout(() => {
+          if (!isPlaying && videoRef.current?.srcObject) {
+            setDebugInfo('⏰ Timeout: Showing video without events')
+            setIsPlaying(true)
+          }
+        }, 3000)
       }
     } catch (err: any) {
       console.error('Error accessing camera:', err)
       setError(`Camera Error: ${err.message}`)
       setDebugInfo(`❌ ${err.message}`)
     }
-  }, [])
+  }, [isPlaying])
 
   const stopCamera = useCallback(() => {
     if (videoRef.current?.srcObject) {
@@ -145,7 +166,7 @@ function App() {
         )}
 
         <div className="camera-container">
-          {!isPlaying ? (
+          {!isPlaying && !videoRef.current?.srcObject ? (
             <div className="camera-placeholder">
               <div className="camera-icon">📷</div>
               <p>Camera not active</p>
@@ -167,7 +188,15 @@ function App() {
                   autoPlay
                   playsInline
                   muted
+                  controls={false}
                   className="video-feed"
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    minHeight: '200px',
+                    objectFit: 'cover',
+                    background: '#000'
+                  }}
                 />
                 
                 {/* Hand Gesture Tracking Overlay */}
