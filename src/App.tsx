@@ -11,159 +11,101 @@ function App() {
   const [fingerCount, setFingerCount] = useState(0)
   const [handLandmarks, setHandLandmarks] = useState<any[]>([])
   const [debugInfo, setDebugInfo] = useState<string>('')
-  const [hasStream, setHasStream] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  // Monitor video stream status
-  useEffect(() => {
-    const checkStream = () => {
-      const video = videoRef.current
-      if (video) {
-        const hasVideoSrc = !!video.srcObject
-        const stream = video.srcObject as MediaStream
-        const streamActive = stream?.active
-        const trackCount = stream?.getTracks?.()?.length || 0
-        const videoTracks = stream?.getVideoTracks?.()?.length || 0
-        
-        // Detailed debug info
-        const streamInfo = stream ? {
-          active: stream.active,
-          tracks: trackCount,
-          videoTracks: videoTracks,
-          id: stream.id
-        } : null
-        
-        console.log('🔍 Stream Check:', {
-          hasVideoSrc,
-          streamActive,
-          streamInfo,
-          videoElement: !!video,
-          videoReadyState: video.readyState,
-          videoPlaying: !video.paused && !video.ended && video.readyState > 2
-        })
-        
-        if (hasVideoSrc && streamActive && videoTracks > 0) {
-          setHasStream(true)
-          setDebugInfo(`📺 ACTIVE STREAM: ${videoTracks} video track(s), Ready:${video.readyState}`)
-          // Force playing state if we have a stream
-          if (!isPlaying) {
-            setIsPlaying(true)
-          }
-        } else {
-          setHasStream(false)
-          if (hasVideoSrc) {
-            setDebugInfo(`⚠️ STREAM ISSUES: active:${streamActive}, tracks:${trackCount}, video:${videoTracks}`)
-          } else {
-            setDebugInfo('❌ No video source detected')
-          }
-        }
-      } else {
-        setHasStream(false)
-        setDebugInfo('❌ Video element not found')
-      }
-    }
-
-    const interval = setInterval(checkStream, 1000)
-    return () => clearInterval(interval)
-  }, [isPlaying])
 
   const startCamera = useCallback(async () => {
     try {
       setError(null)
-      setDebugInfo('🔄 Requesting camera access...')
+      setDebugInfo('🔄 Starting camera...')
       
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera API not supported in this browser')
       }
 
-      setDebugInfo('📱 Camera API supported, requesting permissions...')
-      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
       })
       
-      console.log('📹 Got stream:', {
-        id: stream.id,
-        active: stream.active,
-        tracks: stream.getTracks().length,
-        videoTracks: stream.getVideoTracks().length
-      })
-      
-      setDebugInfo(`✅ Stream created: ${stream.getVideoTracks().length} video tracks, active: ${stream.active}`)
+      console.log('📹 Stream obtained:', stream.active, stream.getVideoTracks().length)
+      setDebugInfo('✅ Camera access granted')
       
       if (videoRef.current) {
-        // Clear any existing stream first
+        // Stop any existing stream
         if (videoRef.current.srcObject) {
           const oldStream = videoRef.current.srcObject as MediaStream
           oldStream.getTracks().forEach(track => track.stop())
         }
         
+        // Assign the new stream
         videoRef.current.srcObject = stream
-        console.log('🎬 Stream assigned to video element')
-        setDebugInfo('🎬 Stream assigned to video element...')
+        console.log('🎬 Setting isPlaying to true...')
+        setIsPlaying(true) // Set immediately when stream is assigned
+        console.log('🎬 isPlaying state updated')
         
-        // Force the video to be visible immediately
-        setIsPlaying(true)
-        setHasStream(true)
-        
-        // Try to start playback with more detailed error handling
-        setTimeout(async () => {
-          if (videoRef.current) {
-            try {
-              await videoRef.current.play()
-              console.log('▶️ Video.play() succeeded')
-              setDebugInfo('▶️ Video playing successfully!')
-                         } catch (playError: any) {
-               console.error('Video play error:', playError)
-               setDebugInfo(`⚠️ Play failed: ${playError.message || 'Unknown error'}`)
-              // Still try to show video even if play fails
-            }
+        // Force re-render check
+        setTimeout(() => {
+          console.log('🔍 State check - isPlaying:', isPlaying)
+          if (!isPlaying) {
+            console.log('⚠️ isPlaying is still false, forcing update...')
+            setIsPlaying(true)
           }
-        }, 1000)
+        }, 100)
         
-        // Add event listeners with detailed logging
+        // Set up event handlers
         videoRef.current.onloadedmetadata = () => {
-          console.log('📹 Video metadata loaded, dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight)
-          setDebugInfo(`📹 Video loaded: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`)
+          console.log('📹 Video metadata loaded:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight)
+          setDebugInfo(`📹 Video ready: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`)
         }
         
         videoRef.current.onplay = () => {
-          console.log('🎬 Video play event')
-          setDebugInfo('🎬 Video play event fired!')
-        }
-        
-        videoRef.current.onplaying = () => {
-          console.log('▶️ Video playing event')
-          setDebugInfo('▶️ Video is now playing!')
-        }
-        
-        videoRef.current.onerror = (e) => {
-          console.error('Video error:', e)
-          setError('Video playback error')
-          setDebugInfo(`❌ Video error: ${e}`)
-        }
-        
-        videoRef.current.onloadstart = () => {
-          console.log('🔄 Video load start')
-          setDebugInfo('🔄 Video starting to load...')
+          console.log('▶️ Video playing')
+          setDebugInfo('▶️ Video playing')
         }
         
         videoRef.current.oncanplay = () => {
           console.log('✅ Video can play')
           setDebugInfo('✅ Video ready to play')
         }
-      } else {
-        console.error('❌ Video ref is null')
-        setError('Video element not found')
+        
+        videoRef.current.onerror = (e) => {
+          console.error('Video error:', e)
+          setDebugInfo('❌ Video error occurred')
+        }
+        
+        // Force play the video
+        try {
+          await videoRef.current.play()
+          setDebugInfo('✅ Video started successfully')
+        } catch (playError) {
+          console.warn('Auto-play failed, but video should still be visible:', playError)
+          setDebugInfo('⚠️ Video ready (click to play if needed)')
+        }
+        
+        // Debug info about video element
+        setTimeout(() => {
+          if (videoRef.current) {
+            const video = videoRef.current
+            console.log('🔍 Video element debug:', {
+              srcObject: !!video.srcObject,
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              readyState: video.readyState,
+              paused: video.paused,
+              ended: video.ended,
+              muted: video.muted,
+              autoplay: video.autoplay
+            })
+          }
+        }, 2000)
       }
     } catch (err: any) {
-      console.error('Error accessing camera:', err)
+      console.error('Camera error:', err)
       setError(`Camera Error: ${err.message}`)
       setDebugInfo(`❌ ${err.message}`)
     }
@@ -175,7 +117,6 @@ function App() {
       stream.getTracks().forEach(track => track.stop())
       videoRef.current.srcObject = null
       setIsPlaying(false)
-      setHasStream(false)
       setIsGestureMode(false)
       setDebugInfo('⏹️ Camera stopped')
     }
@@ -207,7 +148,7 @@ function App() {
     const newMode = !isGestureMode
     setIsGestureMode(newMode)
     if (newMode) {
-      setCapturedImage(null) // Clear any captured images when entering gesture mode
+      setCapturedImage(null)
       setDebugInfo('🖐️ Gesture mode activated')
     } else {
       setDebugInfo('📷 Photo mode activated')
@@ -217,20 +158,14 @@ function App() {
   const handleGestureDetected = useCallback((count: number, landmarks: any[]) => {
     setFingerCount(count)
     setHandLandmarks(landmarks)
-    if (count > 0) {
-      setDebugInfo(`🖐️ ${count} finger${count > 1 ? 's' : ''} detected`)
-    }
   }, [])
-
-  // Show video if we have a stream OR isPlaying is true
-  const showVideo = hasStream || isPlaying
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>🔍 AI Visual Inspector v1.0</h1>
         <p>Capture and analyze images with AI • AR Gestures ✨</p>
-        {showVideo && (
+        {isPlaying && (
           <div className="mode-toggle">
             <button 
               className={`btn ${isGestureMode ? 'btn-success' : 'btn-secondary'}`}
@@ -253,12 +188,12 @@ function App() {
           <div className="debug-info">
             ℹ️ {debugInfo}
             <br />
-            <small>Stream: {hasStream ? '✅' : '❌'} | Playing: {isPlaying ? '✅' : '❌'} | Show: {showVideo ? '✅' : '❌'}</small>
+            <small>isPlaying: {isPlaying ? '✅' : '❌'} | Video Ref: {videoRef.current ? '✅' : '❌'}</small>
           </div>
         )}
 
         <div className="camera-container">
-          {!showVideo ? (
+          {!isPlaying ? (
             <div className="camera-placeholder">
               <div className="camera-icon">📷</div>
               <p>Camera not active</p>
@@ -272,101 +207,118 @@ function App() {
                 Start Camera
               </button>
             </div>
-          ) : (
-            <div className="camera-active">
-              <div className="video-container">
-                <video 
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  controls={false}
-                  className="video-feed"
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    minHeight: '200px',
-                    maxHeight: '400px',
-                    objectFit: 'cover',
-                    background: '#000',
-                    borderRadius: '12px',
-                    display: 'block'
-                  }}
-                />
-                
-                {/* Stream Status Debug */}
-                <div style={{
-                  position: 'absolute',
-                  top: '5px',
-                  right: '5px',
-                  background: 'rgba(0,0,0,0.7)',
-                  color: 'white',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '4px',
-                  fontSize: '0.7rem',
-                  zIndex: 25
-                }}>
-                  {hasStream ? '🟢 STREAM' : '🔴 NO STREAM'}
-                </div>
-                
-                {/* Hand Gesture Tracking Overlay */}
-                {isGestureMode && hasStream && (
-                  <HandGestureTracker
-                    videoRef={videoRef}
-                    onGestureDetected={handleGestureDetected}
-                    isActive={isGestureMode}
-                  />
-                )}
-                
-                {/* AR Elements Overlay */}
-                {isGestureMode && hasStream && (
-                  <AROverlay
-                    fingerCount={fingerCount}
-                    handLandmarks={handLandmarks}
-                    isActive={isGestureMode}
-                  />
-                )}
-
-                {/* Gesture Info Display */}
-                {isGestureMode && (
-                  <div className="gesture-info">
-                    <div className="finger-count-display">
-                      <span className="finger-count">{fingerCount}</span>
-                      <span className="finger-label">
-                        {fingerCount === 0 ? 'Show fingers' : 
-                         fingerCount === 1 ? '⭐ Star!' :
-                         fingerCount === 2 ? '🧊 Cubes!' :
-                         fingerCount === 3 ? '⚪ Spheres!' :
-                         fingerCount === 4 ? '🔺 Pyramids!' :
-                         fingerCount === 5 ? '❤️ Hearts!' : 'Too many!'}
-                      </span>
-                    </div>
-                  </div>
-                )}
+          ) : null}
+          
+          {/* Always render video element, but hide when not playing */}
+          <div 
+            className="camera-active"
+            style={{ 
+              display: isPlaying ? 'flex' : 'none',
+              width: '100%',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}
+          >
+            <div className="video-container">
+              <video 
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="video-feed"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  minHeight: '300px',
+                  backgroundColor: '#000',
+                  borderRadius: '12px',
+                  border: '3px solid lime', // Visible border to see video element
+                  display: 'block'
+                }}
+                onClick={() => {
+                  // Allow user to manually start video if autoplay fails
+                  if (videoRef.current) {
+                    videoRef.current.play().catch(console.warn)
+                  }
+                }}
+              />
+              
+              {/* Video Debug Info Overlay */}
+              <div style={{
+                position: 'absolute',
+                top: '10px',
+                left: '10px',
+                background: 'rgba(0,0,0,0.8)',
+                color: 'white',
+                padding: '0.5rem',
+                borderRadius: '4px',
+                fontSize: '0.8rem',
+                zIndex: 50
+              }}>
+                Video: {videoRef.current?.videoWidth || 0}x{videoRef.current?.videoHeight || 0}
+                <br />
+                State: {videoRef.current?.readyState || 0} | Paused: {videoRef.current?.paused ? 'Yes' : 'No'}
+                <br />
+                Stream: {videoRef.current?.srcObject ? 'Yes' : 'No'}
               </div>
               
-              <div className="camera-controls">
-                {!isGestureMode ? (
-                  <button 
-                    className="btn btn-capture" 
-                    onClick={capturePhoto}
-                  >
-                    📸 Capture
-                  </button>
-                ) : (
-                  <div className="gesture-instructions">
-                    <p>🖐️ Show 1-5 fingers to see AR elements!</p>
+              {/* Hand Gesture Tracking Overlay */}
+              {isGestureMode && (
+                <HandGestureTracker
+                  videoRef={videoRef}
+                  onGestureDetected={handleGestureDetected}
+                  isActive={isGestureMode}
+                />
+              )}
+              
+              {/* AR Elements Overlay */}
+              {isGestureMode && (
+                <AROverlay
+                  fingerCount={fingerCount}
+                  handLandmarks={handLandmarks}
+                  isActive={isGestureMode}
+                />
+              )}
+
+              {/* Gesture Info Display */}
+              {isGestureMode && (
+                <div className="gesture-info">
+                  <div className="finger-count-display">
+                    <span className="finger-count">{fingerCount}</span>
+                    <span className="finger-label">
+                      {fingerCount === 0 ? 'Show fingers' : 
+                       fingerCount === 1 ? '⭐ Star!' :
+                       fingerCount === 2 ? '🧊 Cubes!' :
+                       fingerCount === 3 ? '⚪ Spheres!' :
+                       fingerCount === 4 ? '🔺 Pyramids!' :
+                       fingerCount === 5 ? '❤️ Hearts!' : 'Too many!'}
+                    </span>
                   </div>
-                )}
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={stopCamera}
-                >
-                  Stop Camera
-                </button>
-              </div>
+                </div>
+              )}
             </div>
-          )}
+            
+            <div className="camera-controls">
+              {!isGestureMode ? (
+                <button 
+                  className="btn btn-capture" 
+                  onClick={capturePhoto}
+                >
+                  📸 Capture
+                </button>
+              ) : (
+                <div className="gesture-instructions">
+                  <p>🖐️ Show 1-5 fingers to see AR elements!</p>
+                </div>
+              )}
+              <button 
+                className="btn btn-secondary" 
+                onClick={stopCamera}
+              >
+                Stop Camera
+              </button>
+            </div>
+          </div>
         </div>
 
         {capturedImage && !isGestureMode && (
