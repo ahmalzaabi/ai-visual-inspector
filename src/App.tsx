@@ -19,9 +19,30 @@ function App() {
       setError(null)
       setDebugInfo('🔄 Starting camera...')
       
+      // Debug deployment environment
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      const isHTTPS = window.location.protocol === 'https:'
+      const hasServiceWorker = 'serviceWorker' in navigator
+      
+      console.log('🌐 Environment debug:', {
+        hostname: window.location.hostname,
+        protocol: window.location.protocol,
+        isLocalhost,
+        isHTTPS,
+        hasServiceWorker,
+        userAgent: navigator.userAgent
+      })
+      
+      setDebugInfo(`🌐 ${isLocalhost ? 'Local' : 'Hosted'} | ${isHTTPS ? 'HTTPS' : 'HTTP'} | SW: ${hasServiceWorker}`)
+      
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera API not supported in this browser')
+      }
+
+      // Additional security context checks for hosted environments
+      if (!isLocalhost && !isHTTPS) {
+        throw new Error('Camera requires HTTPS on hosted sites')
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({

@@ -5,18 +5,25 @@
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Camera and Media Permissions -->
+    <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*" />
+    <meta http-equiv="Feature-Policy" content="camera 'self'; microphone 'self'" />
+    
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="AI Inspector" />
     
+    <!-- Security and HTTPS -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+    
     <!-- App Icons -->
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="mask-icon" href="/icons/icon-192.png" color="#ffffff" />
     
     <!-- Meta Description -->
-    <meta name="description" content="AI-powered visual inspection application for mobile and web" />
+    <meta name="description" content="AI-powered visual inspection application with camera access for mobile and web" />
     
     <title>AI Visual Inspector</title>
   </head>

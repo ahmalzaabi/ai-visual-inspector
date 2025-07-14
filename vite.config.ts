@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'AI Visual Inspector',
         short_name: 'AI Inspector',
-        description: 'AI-powered visual inspection application',
+        description: 'AI-powered visual inspection application with camera access',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
@@ -39,7 +39,30 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Don't cache the main app.js to avoid camera access issues
+        dontCacheBustURLsMatching: /\.\w{8}\./,
+        navigateFallback: null, // Disable offline fallback for camera pages
+        runtimeCaching: [
+          {
+            urlPattern: /^https?.*/,
+            handler: 'NetworkFirst', // Always try network first for API calls
+            options: {
+              cacheName: 'https-calls',
+              networkTimeoutSeconds: 15,
+              expiration: {
+                maxEntries: 150,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
+      devOptions: {
+        enabled: false // Disable service worker in development to avoid conflicts
       }
     })
   ],

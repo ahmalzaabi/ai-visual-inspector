@@ -1,0 +1,32 @@
+/*
+  # Camera and Media Permissions
+  Permissions-Policy: camera=*, microphone=*, geolocation=*
+  Feature-Policy: camera 'self'; microphone 'self'; geolocation 'self'
+  
+  # Security Headers
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  
+  # HTTPS and Mixed Content
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: upgrade-insecure-requests
+  
+  # PWA and Cache Control
+  X-Robots-Tag: index, follow
+  
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css  
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+
+# Don't cache the main HTML to avoid camera access issues
+/
+  Cache-Control: no-cache, no-store, must-revalidate 
