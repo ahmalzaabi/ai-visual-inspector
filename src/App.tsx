@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import './App.css'
 import HandGestureTracker from './components/HandGestureTracker'
 import AROverlay from './components/AROverlay'
@@ -11,8 +11,28 @@ function App() {
   const [fingerCount, setFingerCount] = useState(0)
   const [handLandmarks, setHandLandmarks] = useState<any[]>([])
   const [debugInfo, setDebugInfo] = useState<string>('')
+  const [hasStream, setHasStream] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Monitor video stream status
+  useEffect(() => {
+    const checkStream = () => {
+      if (videoRef.current?.srcObject) {
+        setHasStream(true)
+        setDebugInfo('📺 Video stream detected - forcing video display')
+        // Force playing state if we have a stream
+        if (!isPlaying) {
+          setIsPlaying(true)
+        }
+      } else {
+        setHasStream(false)
+      }
+    }
+
+    const interval = setInterval(checkStream, 1000)
+    return () => clearInterval(interval)
+  }, [isPlaying])
 
   const startCamera = useCallback(async () => {
     try {
@@ -34,54 +54,49 @@ function App() {
         }
       })
       
-      setDebugInfo('✅ Camera stream obtained')
+      setDebugInfo('✅ Camera stream obtained, setting up video...')
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        setHasStream(true)
         
-        // Add event listeners for video loading
-        videoRef.current.onloadedmetadata = () => {
-          setDebugInfo('📹 Video metadata loaded, starting playback...')
-          
-          // Ensure video starts playing
+        // Force the video to be visible immediately
+        setDebugInfo('🎬 Forcing video display...')
+        setIsPlaying(true)
+        
+        // Try to start playback
+        setTimeout(() => {
           if (videoRef.current) {
             videoRef.current.play().then(() => {
               setDebugInfo('▶️ Video playing successfully!')
-              setIsPlaying(true)
             }).catch((playError) => {
               console.error('Video play error:', playError)
-              setDebugInfo('⚠️ Video play failed, but showing anyway')
-              // Still set playing to true since we have the stream
-              setIsPlaying(true)
+              setDebugInfo('⚠️ Video play failed but stream is available')
             })
           }
+        }, 500)
+        
+        // Add event listeners
+        videoRef.current.onloadedmetadata = () => {
+          setDebugInfo('📹 Video metadata loaded!')
         }
         
         videoRef.current.onplay = () => {
-          setDebugInfo('🎬 Video play event fired')
-          setIsPlaying(true)
+          setDebugInfo('🎬 Video play event fired!')
         }
         
         videoRef.current.onerror = (e) => {
           console.error('Video error:', e)
           setError('Video playback error')
-          setDebugInfo('❌ Video playback failed')
+          setDebugInfo('❌ Video error occurred')
         }
-
-        // Fallback: if video doesn't fire events within 3 seconds, show it anyway
-        setTimeout(() => {
-          if (!isPlaying && videoRef.current?.srcObject) {
-            setDebugInfo('⏰ Timeout: Showing video without events')
-            setIsPlaying(true)
-          }
-        }, 3000)
       }
     } catch (err: any) {
       console.error('Error accessing camera:', err)
       setError(`Camera Error: ${err.message}`)
       setDebugInfo(`❌ ${err.message}`)
     }
-  }, [isPlaying])
+  }, [])
 
   const stopCamera = useCallback(() => {
     if (videoRef.current?.srcObject) {
@@ -89,6 +104,7 @@ function App() {
       stream.getTracks().forEach(track => track.stop())
       videoRef.current.srcObject = null
       setIsPlaying(false)
+      setHasStream(false)
       setIsGestureMode(false)
       setDebugInfo('⏹️ Camera stopped')
     }
@@ -135,12 +151,15 @@ function App() {
     }
   }, [])
 
+  // Show video if we have a stream OR isPlaying is true
+  const showVideo = hasStream || isPlaying
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>🔍 AI Visual Inspector v1.0</h1>
         <p>Capture and analyze images with AI • AR Gestures ✨</p>
-        {isPlaying && (
+        {showVideo && (
           <div className="mode-toggle">
             <button 
               className={`btn ${isGestureMode ? 'btn-success' : 'btn-secondary'}`}
@@ -162,11 +181,13 @@ function App() {
         {debugInfo && (
           <div className="debug-info">
             ℹ️ {debugInfo}
+            <br />
+            <small>Stream: {hasStream ? '✅' : '❌'} | Playing: {isPlaying ? '✅' : '❌'} | Show: {showVideo ? '✅' : '❌'}</small>
           </div>
         )}
 
         <div className="camera-container">
-          {!isPlaying && !videoRef.current?.srcObject ? (
+          {!showVideo ? (
             <div className="camera-placeholder">
               <div className="camera-icon">📷</div>
               <p>Camera not active</p>
@@ -194,13 +215,31 @@ function App() {
                     width: '100%',
                     height: 'auto',
                     minHeight: '200px',
+                    maxHeight: '400px',
                     objectFit: 'cover',
-                    background: '#000'
+                    background: '#000',
+                    borderRadius: '12px',
+                    display: 'block'
                   }}
                 />
                 
+                {/* Stream Status Debug */}
+                <div style={{
+                  position: 'absolute',
+                  top: '5px',
+                  right: '5px',
+                  background: 'rgba(0,0,0,0.7)',
+                  color: 'white',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  zIndex: 25
+                }}>
+                  {hasStream ? '🟢 STREAM' : '🔴 NO STREAM'}
+                </div>
+                
                 {/* Hand Gesture Tracking Overlay */}
-                {isGestureMode && (
+                {isGestureMode && hasStream && (
                   <HandGestureTracker
                     videoRef={videoRef}
                     onGestureDetected={handleGestureDetected}
@@ -209,7 +248,7 @@ function App() {
                 )}
                 
                 {/* AR Elements Overlay */}
-                {isGestureMode && (
+                {isGestureMode && hasStream && (
                   <AROverlay
                     fingerCount={fingerCount}
                     handLandmarks={handLandmarks}
