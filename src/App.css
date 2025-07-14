@@ -1,0 +1,253 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.app {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.app-header {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.app-header h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.app-header p {
+  opacity: 0.9;
+  font-size: 0.9rem;
+}
+
+/* Main content */
+.app-main {
+  flex: 1;
+  padding: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Error message */
+.error-message {
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Camera container */
+.camera-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-placeholder {
+  text-align: center;
+}
+
+.camera-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.camera-placeholder p {
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
+.camera-active {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.video-feed {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  background: #000;
+  min-height: 200px;
+  object-fit: cover;
+}
+
+.camera-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+/* Captured image */
+.captured-image-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.captured-image-container h3 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.captured-image {
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.image-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-capture {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  color: white;
+  font-size: 1rem;
+  padding: 1rem 1.5rem;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+  color: white;
+}
+
+/* Footer */
+.app-footer {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .app-main {
+    padding: 0.5rem;
+  }
+  
+  .camera-container {
+    padding: 0.75rem;
+    min-height: 250px;
+  }
+  
+  .video-feed {
+    min-height: 150px;
+  }
+  
+  .btn {
+    padding: 0.65rem 1.2rem;
+    font-size: 0.85rem;
+    min-width: 100px;
+  }
+  
+  .btn-capture {
+    padding: 0.85rem 1.2rem;
+  }
+  
+  .image-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .captured-image {
+    max-width: 100%;
+  }
+}
+
+/* PWA safe areas for iPhone */
+@supports (padding: max(0px)) {
+  .app {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  .app-header {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .app-footer {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .app {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  }
+}
