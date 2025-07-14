@@ -18,15 +18,49 @@ function App() {
   // Monitor video stream status
   useEffect(() => {
     const checkStream = () => {
-      if (videoRef.current?.srcObject) {
-        setHasStream(true)
-        setDebugInfo('📺 Video stream detected - forcing video display')
-        // Force playing state if we have a stream
-        if (!isPlaying) {
-          setIsPlaying(true)
+      const video = videoRef.current
+      if (video) {
+        const hasVideoSrc = !!video.srcObject
+        const stream = video.srcObject as MediaStream
+        const streamActive = stream?.active
+        const trackCount = stream?.getTracks?.()?.length || 0
+        const videoTracks = stream?.getVideoTracks?.()?.length || 0
+        
+        // Detailed debug info
+        const streamInfo = stream ? {
+          active: stream.active,
+          tracks: trackCount,
+          videoTracks: videoTracks,
+          id: stream.id
+        } : null
+        
+        console.log('🔍 Stream Check:', {
+          hasVideoSrc,
+          streamActive,
+          streamInfo,
+          videoElement: !!video,
+          videoReadyState: video.readyState,
+          videoPlaying: !video.paused && !video.ended && video.readyState > 2
+        })
+        
+        if (hasVideoSrc && streamActive && videoTracks > 0) {
+          setHasStream(true)
+          setDebugInfo(`📺 ACTIVE STREAM: ${videoTracks} video track(s), Ready:${video.readyState}`)
+          // Force playing state if we have a stream
+          if (!isPlaying) {
+            setIsPlaying(true)
+          }
+        } else {
+          setHasStream(false)
+          if (hasVideoSrc) {
+            setDebugInfo(`⚠️ STREAM ISSUES: active:${streamActive}, tracks:${trackCount}, video:${videoTracks}`)
+          } else {
+            setDebugInfo('❌ No video source detected')
+          }
         }
       } else {
         setHasStream(false)
+        setDebugInfo('❌ Video element not found')
       }
     }
 
@@ -54,42 +88,79 @@ function App() {
         }
       })
       
-      setDebugInfo('✅ Camera stream obtained, setting up video...')
+      console.log('📹 Got stream:', {
+        id: stream.id,
+        active: stream.active,
+        tracks: stream.getTracks().length,
+        videoTracks: stream.getVideoTracks().length
+      })
+      
+      setDebugInfo(`✅ Stream created: ${stream.getVideoTracks().length} video tracks, active: ${stream.active}`)
       
       if (videoRef.current) {
+        // Clear any existing stream first
+        if (videoRef.current.srcObject) {
+          const oldStream = videoRef.current.srcObject as MediaStream
+          oldStream.getTracks().forEach(track => track.stop())
+        }
+        
         videoRef.current.srcObject = stream
-        setHasStream(true)
+        console.log('🎬 Stream assigned to video element')
+        setDebugInfo('🎬 Stream assigned to video element...')
         
         // Force the video to be visible immediately
-        setDebugInfo('🎬 Forcing video display...')
         setIsPlaying(true)
+        setHasStream(true)
         
-        // Try to start playback
-        setTimeout(() => {
+        // Try to start playback with more detailed error handling
+        setTimeout(async () => {
           if (videoRef.current) {
-            videoRef.current.play().then(() => {
+            try {
+              await videoRef.current.play()
+              console.log('▶️ Video.play() succeeded')
               setDebugInfo('▶️ Video playing successfully!')
-            }).catch((playError) => {
-              console.error('Video play error:', playError)
-              setDebugInfo('⚠️ Video play failed but stream is available')
-            })
+                         } catch (playError: any) {
+               console.error('Video play error:', playError)
+               setDebugInfo(`⚠️ Play failed: ${playError.message || 'Unknown error'}`)
+              // Still try to show video even if play fails
+            }
           }
-        }, 500)
+        }, 1000)
         
-        // Add event listeners
+        // Add event listeners with detailed logging
         videoRef.current.onloadedmetadata = () => {
-          setDebugInfo('📹 Video metadata loaded!')
+          console.log('📹 Video metadata loaded, dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight)
+          setDebugInfo(`📹 Video loaded: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`)
         }
         
         videoRef.current.onplay = () => {
+          console.log('🎬 Video play event')
           setDebugInfo('🎬 Video play event fired!')
+        }
+        
+        videoRef.current.onplaying = () => {
+          console.log('▶️ Video playing event')
+          setDebugInfo('▶️ Video is now playing!')
         }
         
         videoRef.current.onerror = (e) => {
           console.error('Video error:', e)
           setError('Video playback error')
-          setDebugInfo('❌ Video error occurred')
+          setDebugInfo(`❌ Video error: ${e}`)
         }
+        
+        videoRef.current.onloadstart = () => {
+          console.log('🔄 Video load start')
+          setDebugInfo('🔄 Video starting to load...')
+        }
+        
+        videoRef.current.oncanplay = () => {
+          console.log('✅ Video can play')
+          setDebugInfo('✅ Video ready to play')
+        }
+      } else {
+        console.error('❌ Video ref is null')
+        setError('Video element not found')
       }
     } catch (err: any) {
       console.error('Error accessing camera:', err)
