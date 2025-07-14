@@ -1,60 +1,29 @@
 import { useState, useRef, useCallback } from 'react'
 import './App.css'
-import HandGestureTracker from './components/HandGestureTracker'
-import AROverlay from './components/AROverlay'
 
 function App() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isGestureMode, setIsGestureMode] = useState(false)
-  const [fingerCount, setFingerCount] = useState(0)
-  const [handLandmarks, setHandLandmarks] = useState<any[]>([])
-  const [debugInfo, setDebugInfo] = useState<string>('')
+  const [showCompletion, setShowCompletion] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const startCamera = useCallback(async () => {
     try {
       setError(null)
-      setDebugInfo('🔄 Starting camera...')
       
-      // Debug deployment environment
-      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      const isHTTPS = window.location.protocol === 'https:'
-      const hasServiceWorker = 'serviceWorker' in navigator
-      
-      console.log('🌐 Environment debug:', {
-        hostname: window.location.hostname,
-        protocol: window.location.protocol,
-        isLocalhost,
-        isHTTPS,
-        hasServiceWorker,
-        userAgent: navigator.userAgent
-      })
-      
-      setDebugInfo(`🌐 ${isLocalhost ? 'Local' : 'Hosted'} | ${isHTTPS ? 'HTTPS' : 'HTTP'} | SW: ${hasServiceWorker}`)
-      
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera API not supported in this browser')
-      }
-
-      // Additional security context checks for hosted environments
-      if (!isLocalhost && !isHTTPS) {
-        throw new Error('Camera requires HTTPS on hosted sites')
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera not supported')
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: 'environment', // Always back camera
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 }
         }
       })
-      
-      console.log('📹 Stream obtained:', stream.active, stream.getVideoTracks().length)
-      setDebugInfo('✅ Camera access granted')
       
       if (videoRef.current) {
         // Stop any existing stream
@@ -63,72 +32,19 @@ function App() {
           oldStream.getTracks().forEach(track => track.stop())
         }
         
-        // Assign the new stream
         videoRef.current.srcObject = stream
-        console.log('🎬 Setting isPlaying to true...')
-        setIsPlaying(true) // Set immediately when stream is assigned
-        console.log('🎬 isPlaying state updated')
+        setIsPlaying(true)
         
-        // Force re-render check
-        setTimeout(() => {
-          console.log('🔍 State check - isPlaying:', isPlaying)
-          if (!isPlaying) {
-            console.log('⚠️ isPlaying is still false, forcing update...')
-            setIsPlaying(true)
-          }
-        }, 100)
-        
-        // Set up event handlers
-        videoRef.current.onloadedmetadata = () => {
-          console.log('📹 Video metadata loaded:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight)
-          setDebugInfo(`📹 Video ready: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`)
-        }
-        
-        videoRef.current.onplay = () => {
-          console.log('▶️ Video playing')
-          setDebugInfo('▶️ Video playing')
-        }
-        
-        videoRef.current.oncanplay = () => {
-          console.log('✅ Video can play')
-          setDebugInfo('✅ Video ready to play')
-        }
-        
-        videoRef.current.onerror = (e) => {
-          console.error('Video error:', e)
-          setDebugInfo('❌ Video error occurred')
-        }
-        
-        // Force play the video
+        // Auto-play
         try {
           await videoRef.current.play()
-          setDebugInfo('✅ Video started successfully')
         } catch (playError) {
-          console.warn('Auto-play failed, but video should still be visible:', playError)
-          setDebugInfo('⚠️ Video ready (click to play if needed)')
+          console.warn('Autoplay failed:', playError)
         }
-        
-        // Debug info about video element
-        setTimeout(() => {
-          if (videoRef.current) {
-            const video = videoRef.current
-            console.log('🔍 Video element debug:', {
-              srcObject: !!video.srcObject,
-              videoWidth: video.videoWidth,
-              videoHeight: video.videoHeight,
-              readyState: video.readyState,
-              paused: video.paused,
-              ended: video.ended,
-              muted: video.muted,
-              autoplay: video.autoplay
-            })
-          }
-        }, 2000)
       }
     } catch (err: any) {
       console.error('Camera error:', err)
       setError(`Camera Error: ${err.message}`)
-      setDebugInfo(`❌ ${err.message}`)
     }
   }, [])
 
@@ -138,8 +54,6 @@ function App() {
       stream.getTracks().forEach(track => track.stop())
       videoRef.current.srcObject = null
       setIsPlaying(false)
-      setIsGestureMode(false)
-      setDebugInfo('⏹️ Camera stopped')
     }
   }, [])
 
@@ -156,7 +70,6 @@ function App() {
         
         const imageData = canvas.toDataURL('image/jpeg', 0.8)
         setCapturedImage(imageData)
-        setDebugInfo('📸 Photo captured successfully')
       }
     }
   }, [])
@@ -165,37 +78,18 @@ function App() {
     setCapturedImage(null)
   }, [])
 
-  const toggleGestureMode = useCallback(() => {
-    const newMode = !isGestureMode
-    setIsGestureMode(newMode)
-    if (newMode) {
-      setCapturedImage(null)
-      setDebugInfo('🖐️ Gesture mode activated')
-    } else {
-      setDebugInfo('📷 Photo mode activated')
-    }
-  }, [isGestureMode])
-
-  const handleGestureDetected = useCallback((count: number, landmarks: any[]) => {
-    setFingerCount(count)
-    setHandLandmarks(landmarks)
+  // Simple thumbs up detection (placeholder - replace with actual ML later)
+  const detectThumbsUp = useCallback(() => {
+    // Simulate thumbs up detection
+    setShowCompletion(true)
+    setTimeout(() => setShowCompletion(false), 2000)
   }, [])
 
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🔍 AI Visual Inspector v1.0</h1>
-        <p>Capture and analyze images with AI • AR Gestures ✨</p>
-        {isPlaying && (
-          <div className="mode-toggle">
-            <button 
-              className={`btn ${isGestureMode ? 'btn-success' : 'btn-secondary'}`}
-              onClick={toggleGestureMode}
-            >
-              {isGestureMode ? '🖐️ Gesture Mode ON' : '📷 Photo Mode'}
-            </button>
-          </div>
-        )}
+        <h1>🔍 AI Visual Inspector</h1>
+        <p>AI-powered visual inspection</p>
       </header>
 
       <main className="app-main">
@@ -205,32 +99,21 @@ function App() {
           </div>
         )}
 
-        {debugInfo && (
-          <div className="debug-info">
-            ℹ️ {debugInfo}
-            <br />
-            <small>isPlaying: {isPlaying ? '✅' : '❌'} | Video Ref: {videoRef.current ? '✅' : '❌'}</small>
-          </div>
-        )}
-
         <div className="camera-container">
           {!isPlaying ? (
             <div className="camera-placeholder">
               <div className="camera-icon">📷</div>
-              <p>Camera not active</p>
-              <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                Make sure to allow camera permissions
-              </p>
+              <p>Start Camera</p>
               <button 
                 className="btn btn-primary" 
                 onClick={startCamera}
               >
-                Start Camera
+                📱 Start Camera
               </button>
             </div>
           ) : null}
           
-          {/* Always render video element, but hide when not playing */}
+          {/* Camera View */}
           <div 
             className="camera-active"
             style={{ 
@@ -247,102 +130,48 @@ function App() {
                 playsInline
                 muted
                 className="video-feed"
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  minHeight: '300px',
-                  backgroundColor: '#000',
-                  borderRadius: '12px',
-                  border: '3px solid lime', // Visible border to see video element
-                  display: 'block'
-                }}
                 onClick={() => {
-                  // Allow user to manually start video if autoplay fails
                   if (videoRef.current) {
                     videoRef.current.play().catch(console.warn)
                   }
                 }}
               />
               
-              {/* Video Debug Info Overlay */}
-              <div style={{
-                position: 'absolute',
-                top: '10px',
-                left: '10px',
-                background: 'rgba(0,0,0,0.8)',
-                color: 'white',
-                padding: '0.5rem',
-                borderRadius: '4px',
-                fontSize: '0.8rem',
-                zIndex: 50
-              }}>
-                Video: {videoRef.current?.videoWidth || 0}x{videoRef.current?.videoHeight || 0}
-                <br />
-                State: {videoRef.current?.readyState || 0} | Paused: {videoRef.current?.paused ? 'Yes' : 'No'}
-                <br />
-                Stream: {videoRef.current?.srcObject ? 'Yes' : 'No'}
-              </div>
-              
-              {/* Hand Gesture Tracking Overlay */}
-              {isGestureMode && (
-                <HandGestureTracker
-                  videoRef={videoRef}
-                  onGestureDetected={handleGestureDetected}
-                  isActive={isGestureMode}
-                />
-              )}
-              
-              {/* AR Elements Overlay */}
-              {isGestureMode && (
-                <AROverlay
-                  fingerCount={fingerCount}
-                  handLandmarks={handLandmarks}
-                  isActive={isGestureMode}
-                />
-              )}
-
-              {/* Gesture Info Display */}
-              {isGestureMode && (
-                <div className="gesture-info">
-                  <div className="finger-count-display">
-                    <span className="finger-count">{fingerCount}</span>
-                    <span className="finger-label">
-                      {fingerCount === 0 ? 'Show fingers' : 
-                       fingerCount === 1 ? '⭐ Star!' :
-                       fingerCount === 2 ? '🧊 Cubes!' :
-                       fingerCount === 3 ? '⚪ Spheres!' :
-                       fingerCount === 4 ? '🔺 Pyramids!' :
-                       fingerCount === 5 ? '❤️ Hearts!' : 'Too many!'}
-                    </span>
+              {/* Completion Animation */}
+              {showCompletion && (
+                <div className="completion-overlay">
+                  <div className="completion-animation">
+                    <div className="checkmark">✓</div>
+                    <p>Perfect! 👍</p>
                   </div>
                 </div>
               )}
             </div>
             
             <div className="camera-controls">
-              {!isGestureMode ? (
-                <button 
-                  className="btn btn-capture" 
-                  onClick={capturePhoto}
-                >
-                  📸 Capture
-                </button>
-              ) : (
-                <div className="gesture-instructions">
-                  <p>🖐️ Show 1-5 fingers to see AR elements!</p>
-                </div>
-              )}
+              <button 
+                className="btn btn-capture" 
+                onClick={capturePhoto}
+              >
+                📸 Capture
+              </button>
+              <button 
+                className="btn btn-success" 
+                onClick={detectThumbsUp}
+              >
+                👍 Test Detection
+              </button>
               <button 
                 className="btn btn-secondary" 
                 onClick={stopCamera}
               >
-                Stop Camera
+                Stop
               </button>
             </div>
           </div>
         </div>
 
-        {capturedImage && !isGestureMode && (
+        {capturedImage && (
           <div className="captured-image-container">
             <h3>📸 Captured Image</h3>
             <img 
@@ -353,9 +182,9 @@ function App() {
             <div className="image-actions">
               <button 
                 className="btn btn-success"
-                onClick={() => alert('AI Analysis would happen here!')}
+                onClick={() => alert('AI Analysis ready for implementation!')}
               >
-                🤖 Analyze with AI
+                🤖 Analyze
               </button>
               <button 
                 className="btn btn-secondary" 
@@ -371,7 +200,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>PWA ready • Works offline • Mobile optimized • AR Gestures ✨</p>
+        <p>PWA • Camera • AI Ready</p>
       </footer>
     </div>
   )
