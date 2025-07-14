@@ -1,10 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
 import './App.css'
+import HandGestureTracker from './components/HandGestureTracker'
+import AROverlay from './components/AROverlay'
 
 function App() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isGestureMode, setIsGestureMode] = useState(false)
+  const [fingerCount, setFingerCount] = useState(0)
+  const [handLandmarks, setHandLandmarks] = useState<any[]>([])
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -35,6 +40,7 @@ function App() {
       stream.getTracks().forEach(track => track.stop())
       videoRef.current.srcObject = null
       setIsPlaying(false)
+      setIsGestureMode(false)
     }
   }, [])
 
@@ -59,11 +65,33 @@ function App() {
     setCapturedImage(null)
   }, [])
 
+  const toggleGestureMode = useCallback(() => {
+    setIsGestureMode(!isGestureMode)
+    if (!isGestureMode) {
+      setCapturedImage(null) // Clear any captured images when entering gesture mode
+    }
+  }, [isGestureMode])
+
+  const handleGestureDetected = useCallback((count: number, landmarks: any[]) => {
+    setFingerCount(count)
+    setHandLandmarks(landmarks)
+  }, [])
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>🔍 AI Visual Inspector v1.0</h1>
         <p>Capture and analyze images with AI • Auto-deploy test ✅</p>
+        {isPlaying && (
+          <div className="mode-toggle">
+            <button 
+              className={`btn ${isGestureMode ? 'btn-success' : 'btn-secondary'}`}
+              onClick={toggleGestureMode}
+            >
+              {isGestureMode ? '🖐️ Gesture Mode ON' : '📷 Photo Mode'}
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="app-main">
@@ -87,20 +115,64 @@ function App() {
             </div>
           ) : (
             <div className="camera-active">
-              <video 
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="video-feed"
-              />
+              <div className="video-container">
+                <video 
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="video-feed"
+                />
+                
+                {/* Hand Gesture Tracking Overlay */}
+                {isGestureMode && (
+                  <HandGestureTracker
+                    videoRef={videoRef}
+                    onGestureDetected={handleGestureDetected}
+                    isActive={isGestureMode}
+                  />
+                )}
+                
+                {/* AR Elements Overlay */}
+                {isGestureMode && (
+                  <AROverlay
+                    fingerCount={fingerCount}
+                    handLandmarks={handLandmarks}
+                    isActive={isGestureMode}
+                  />
+                )}
+
+                {/* Gesture Info Display */}
+                {isGestureMode && (
+                  <div className="gesture-info">
+                    <div className="finger-count-display">
+                      <span className="finger-count">{fingerCount}</span>
+                      <span className="finger-label">
+                        {fingerCount === 0 ? 'Show fingers' : 
+                         fingerCount === 1 ? '⭐ Star!' :
+                         fingerCount === 2 ? '🧊 Cubes!' :
+                         fingerCount === 3 ? '⚪ Spheres!' :
+                         fingerCount === 4 ? '🔺 Pyramids!' :
+                         fingerCount === 5 ? '❤️ Hearts!' : 'Too many!'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               <div className="camera-controls">
-                <button 
-                  className="btn btn-capture" 
-                  onClick={capturePhoto}
-                >
-                  📸 Capture
-                </button>
+                {!isGestureMode ? (
+                  <button 
+                    className="btn btn-capture" 
+                    onClick={capturePhoto}
+                  >
+                    📸 Capture
+                  </button>
+                ) : (
+                  <div className="gesture-instructions">
+                    <p>🖐️ Show 1-5 fingers to see AR elements!</p>
+                  </div>
+                )}
                 <button 
                   className="btn btn-secondary" 
                   onClick={stopCamera}
@@ -112,7 +184,7 @@ function App() {
           )}
         </div>
 
-        {capturedImage && (
+        {capturedImage && !isGestureMode && (
           <div className="captured-image-container">
             <h3>📸 Captured Image</h3>
             <img 
@@ -141,7 +213,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>PWA ready • Works offline • Mobile optimized</p>
+        <p>PWA ready • Works offline • Mobile optimized • AR Gestures ✨</p>
       </footer>
     </div>
   )

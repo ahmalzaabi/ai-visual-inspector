@@ -33,6 +33,11 @@
   font-size: 0.9rem;
 }
 
+/* Mode toggle */
+.mode-toggle {
+  margin-top: 1rem;
+}
+
 /* Main content */
 .app-main {
   flex: 1;
@@ -86,6 +91,15 @@
   gap: 1rem;
 }
 
+/* Video container with overlays */
+.video-container {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
 .video-feed {
   width: 100%;
   height: auto;
@@ -93,12 +107,58 @@
   background: #000;
   min-height: 200px;
   object-fit: cover;
+  display: block;
+}
+
+/* Gesture info overlay */
+.gesture-info {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  z-index: 30;
+}
+
+.finger-count-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.finger-count {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #00ff00;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.finger-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* Gesture instructions */
+.gesture-instructions {
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.gesture-instructions p {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin: 0;
 }
 
 .camera-controls {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Captured image */
@@ -180,6 +240,12 @@
   color: white;
 }
 
+/* AR and Hand Gesture overlays */
+.hand-gesture-overlay,
+.ar-overlay {
+  border-radius: 12px;
+}
+
 /* Footer */
 .app-footer {
   text-align: center;
@@ -227,6 +293,29 @@
   .captured-image {
     max-width: 100%;
   }
+
+  .gesture-info {
+    bottom: 5px;
+    left: 5px;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .finger-count {
+    font-size: 1.2rem;
+  }
+
+  .finger-label {
+    font-size: 0.8rem;
+  }
+
+  .camera-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .gesture-instructions p {
+    font-size: 0.8rem;
+  }
 }
 
 /* PWA safe areas for iPhone */
@@ -249,5 +338,24 @@
 @media (prefers-color-scheme: dark) {
   .app {
     background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  }
+}
+
+/* High-performance GPU accelerated animations */
+.hand-gesture-overlay,
+.ar-overlay,
+.video-feed {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+  
+  .btn:hover {
+    transform: none;
   }
 }
