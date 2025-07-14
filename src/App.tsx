@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import './App.css'
 import HandGestureTracker from './components/HandGestureTracker'
 import AROverlay from './components/AROverlay'
