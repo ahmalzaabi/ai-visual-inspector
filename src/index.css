@@ -145,8 +145,7 @@ a:hover {
 }
 
 a:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline: none;
 }
 
 /* Buttons - base styles */
@@ -162,8 +161,7 @@ button {
 }
 
 button:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline: none;
 }
 
 button:disabled {
@@ -190,8 +188,8 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
 }
 
 /* Images */
@@ -208,10 +206,15 @@ ul, ol {
   padding: 0;
 }
 
-/* Selection */
+/* Remove selection highlighting */
 ::selection {
-  background: rgba(0, 212, 255, 0.3);
-  color: white;
+  background: transparent;
+  color: inherit;
+}
+
+::-moz-selection {
+  background: transparent;
+  color: inherit;
 }
 
 /* Scrollbar */
@@ -239,7 +242,12 @@ ul, ol {
   scrollbar-color: var(--border-primary) var(--bg-secondary);
 }
 
-/* Focus management */
+/* Remove all focus highlighting */
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .js-focus-visible :focus:not(.focus-visible) {
   outline: none;
 }
@@ -283,7 +291,7 @@ ul, ol {
   }
 }
 
-/* Prevent zoom on mobile inputs */
+/* Prevent zoom on mobile inputs and remove highlights */
 @media screen and (max-width: 480px) {
   input[type="text"],
   input[type="email"],
@@ -294,6 +302,25 @@ ul, ol {
   textarea {
     font-size: 16px;
   }
+}
+
+/* Remove mobile touch highlights */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection only where needed */
+p, span, h1, h2, h3, h4, h5, h6 {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
 
 /* Print styles */
