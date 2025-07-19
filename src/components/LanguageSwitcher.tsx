@@ -22,9 +22,6 @@ const LanguageSwitcher = () => {
       <span className="lang-text">
         {i18n.language === 'en' ? 'العربية' : 'English'}
       </span>
-      <span className="lang-icon">
-        {i18n.language === 'en' ? '🌐' : '🌍'}
-      </span>
     </button>
   );
 };
