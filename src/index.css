@@ -190,8 +190,8 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
 }
 
 /* Images */
@@ -208,15 +208,13 @@ ul, ol {
   padding: 0;
 }
 
-/* Normal text selection highlighting */
+/* Remove problematic text selection highlighting */
 ::selection {
-  background: rgba(0, 212, 255, 0.3);
-  color: white;
+  background: transparent;
 }
 
 ::-moz-selection {
-  background: rgba(0, 212, 255, 0.3);
-  color: white;
+  background: transparent;
 }
 
 /* Scrollbar */
