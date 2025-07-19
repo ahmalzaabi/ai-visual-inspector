@@ -2,32 +2,50 @@ import './TechIcons.css';
 
 export const AssemblyIcon = () => (
   <div className="tech-icon assembly-icon">
-    <div className="gear-outer">
-      <div className="gear-inner"></div>
-      <div className="gear-teeth"></div>
+    <div className="assembly-components">
+      <div className="component component-1">
+        <div className="bolt-hole"></div>
+      </div>
+      <div className="component component-2">
+        <div className="bolt-hole"></div>
+      </div>
+      <div className="component component-3">
+        <div className="bolt-hole"></div>
+      </div>
     </div>
-    <div className="circuit-lines">
-      <div className="line line-1"></div>
-      <div className="line line-2"></div>
-      <div className="line line-3"></div>
+    <div className="assembly-bolts">
+      <div className="bolt bolt-1"></div>
+      <div className="bolt bolt-2"></div>
+    </div>
+    <div className="assembly-arrows">
+      <div className="arrow arrow-1"></div>
+      <div className="arrow arrow-2"></div>
     </div>
   </div>
 );
 
 export const InspectionIcon = () => (
   <div className="tech-icon inspection-icon">
-    <div className="magnify-glass">
-      <div className="lens"></div>
-      <div className="handle"></div>
+    <div className="inspection-layers">
+      <div className="layer layer-1"></div>
+      <div className="layer layer-2"></div>
+      <div className="layer layer-3"></div>
+      <div className="layer layer-4"></div>
     </div>
-    <div className="crosshairs">
-      <div className="crosshair-h"></div>
-      <div className="crosshair-v"></div>
+    <div className="depth-scanner">
+      <div className="scanner-beam"></div>
+      <div className="scanner-grid">
+        <div className="grid-line grid-h1"></div>
+        <div className="grid-line grid-h2"></div>
+        <div className="grid-line grid-v1"></div>
+        <div className="grid-line grid-v2"></div>
+      </div>
     </div>
-    <div className="scan-lines">
-      <div className="scan-line scan-1"></div>
-      <div className="scan-line scan-2"></div>
-      <div className="scan-line scan-3"></div>
+    <div className="analysis-points">
+      <div className="point point-1"></div>
+      <div className="point point-2"></div>
+      <div className="point point-3"></div>
+      <div className="point point-4"></div>
     </div>
   </div>
 );
