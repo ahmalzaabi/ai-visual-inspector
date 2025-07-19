@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './components/LanguageSwitcher'
 import FeatureCard from './components/FeatureCard'
@@ -7,13 +7,31 @@ import './App.css'
 
 function App() {
   const { t } = useTranslation()
+  
+  // Detect PWA mode on mount
+  useEffect(() => {
+    const checkPWA = () => {
+      const isPWAMode = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone ||
+                        document.referrer.includes('android-app://');
+      setIsPWA(isPWAMode);
+    };
+    
+    checkPWA();
+    window.addEventListener('resize', checkPWA);
+    return () => window.removeEventListener('resize', checkPWA);
+  }, []);
+
   const [activeFeature, setActiveFeature] = useState<string | null>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showCompletion, setShowCompletion] = useState(false)
+  const [isPWA, setIsPWA] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
   const features = [
     {
@@ -52,14 +70,15 @@ function App() {
     try {
       setError(null)
       
-      // Check if we're in PWA mode
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                    (window.navigator as any).standalone ||
-                    document.referrer.includes('android-app://');
-      
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error('Camera not supported in this browser')
       }
+
+              // Stop any existing streams first
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+          streamRef.current = null;
+        }
 
       // For iOS PWA, request permissions more explicitly
       if (isPWA && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
@@ -93,38 +112,86 @@ function App() {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       
+      // Keep stream reference to prevent garbage collection
+      streamRef.current = stream;
+      setStream(stream);
+      
       if (videoRef.current) {
-        if (videoRef.current.srcObject) {
-          const oldStream = videoRef.current.srcObject as MediaStream
+        const videoElement = videoRef.current;
+        
+        if (videoElement.srcObject) {
+          const oldStream = videoElement.srcObject as MediaStream
           oldStream.getTracks().forEach(track => track.stop())
         }
         
-        videoRef.current.srcObject = stream
+        // For iOS PWA, set additional video attributes
+        if (isPWA && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+          videoElement.setAttribute('playsinline', 'true');
+          videoElement.setAttribute('webkit-playsinline', 'true');
+          videoElement.setAttribute('x-webkit-airplay', 'allow');
+          videoElement.muted = true; // Required for autoplay in iOS
+        }
+        
+        videoElement.srcObject = stream;
         
         // Ensure video properties are set for visibility
-        videoRef.current.style.display = 'block'
-        videoRef.current.style.visibility = 'visible'
-        videoRef.current.style.opacity = '1'
+        videoElement.style.display = 'block';
+        videoElement.style.visibility = 'visible';
+        videoElement.style.opacity = '1';
         
-        setIsPlaying(true)
+        // Add event listeners to detect stream loss
+        const handleStreamEnd = () => {
+          console.warn('Stream ended, attempting to restart...');
+          if (streamRef.current && streamRef.current.active) {
+            // Stream is still active, this might be a false alarm
+            return;
+          }
+          // Only restart if we're still supposed to be playing
+          if (isPlaying) {
+            setTimeout(() => startCamera(), 1000);
+          }
+        };
         
-        // Better play handling
-        const playPromise = videoRef.current.play()
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              console.log('Video playback started successfully')
-            })
-            .catch(error => {
-              console.warn('Autoplay failed:', error)
-              // Try to play again after a short delay
-              setTimeout(() => {
-                if (videoRef.current) {
-                  videoRef.current.play().catch(console.warn)
-                }
-              }, 500)
-            })
-        }
+        const handleVideoError = (e: Event) => {
+          console.error('Video error:', e);
+          if (isPlaying) {
+            setTimeout(() => startCamera(), 1000);
+          }
+        };
+        
+        stream.getTracks().forEach(track => {
+          track.addEventListener('ended', handleStreamEnd);
+        });
+        
+        videoElement.addEventListener('error', handleVideoError);
+        
+        setIsPlaying(true);
+        
+        // Better play handling with multiple attempts
+        const attemptPlay = async (attempts = 0) => {
+          if (attempts > 3) {
+            throw new Error('Failed to start video playback after multiple attempts');
+          }
+          
+          try {
+            await videoElement.play();
+            console.log('Video playback started successfully');
+          } catch (error) {
+            console.warn(`Autoplay attempt ${attempts + 1} failed:`, error);
+            
+            if (attempts === 0) {
+              // First attempt failed, try with user interaction
+              videoElement.muted = true;
+              videoElement.controls = false;
+            }
+            
+            // Wait and try again
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return attemptPlay(attempts + 1);
+          }
+        };
+        
+        await attemptPlay();
       }
     } catch (err: any) {
       console.error('Camera error:', err)
@@ -143,16 +210,22 @@ function App() {
       
       setError(`${t('camera.error')}: ${errorMessage}`)
     }
-  }, [t])
+  }, [t, isPWA, isPlaying])
 
   const stopCamera = useCallback(() => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
+    if (stream) {
       stream.getTracks().forEach(track => track.stop())
-      videoRef.current.srcObject = null
-      setIsPlaying(false)
+      setStream(null)
     }
-  }, [])
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    setIsPlaying(false)
+  }, [stream])
 
   const capturePhoto = useCallback(() => {
     if (videoRef.current && canvasRef.current) {
@@ -275,6 +348,8 @@ function App() {
                      autoPlay
                      playsInline
                      muted
+                     webkit-playsinline="true"
+                     x-webkit-airplay="allow"
                      className="video-feed"
                      onClick={() => {
                        if (videoRef.current) {
