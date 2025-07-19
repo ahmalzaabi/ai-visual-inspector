@@ -30,10 +30,10 @@
 .app::before {
   content: '';
   position: fixed;
-  top: -10px; /* Extend slightly above viewport */
-  left: -10px;
-  right: -10px;
-  height: calc(70px + env(safe-area-inset-top, 0px)); /* Cover everything */
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + env(safe-area-inset-top, 0px));
   background: #0a0a0a;
   z-index: 50;
   pointer-events: none;

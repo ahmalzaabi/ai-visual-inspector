@@ -95,10 +95,7 @@ body {
   background-color: #0a0a0a !important;
 }
 
-/* Force background on everything including viewport */
-* {
-  background-color: inherit;
-}
+/* Removed problematic background inheritance that was causing text highlighting issues */
 
 #root {
   background: #0a0a0a !important;
