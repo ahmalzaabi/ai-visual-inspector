@@ -250,6 +250,14 @@ ul, ol {
   .app {
     min-height: -webkit-fill-available;
   }
+  
+  /* Better safe area handling for iOS */
+  .app::before {
+    background: 
+      radial-gradient(ellipse at top, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+      linear-gradient(180deg, #0a0a0a 0%, #111827 100%);
+  }
 }
 
 /* Prevent zoom on mobile inputs */

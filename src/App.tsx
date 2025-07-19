@@ -70,12 +70,30 @@ function App() {
         }
         
         videoRef.current.srcObject = stream
+        
+        // Ensure video properties are set for visibility
+        videoRef.current.style.display = 'block'
+        videoRef.current.style.visibility = 'visible'
+        videoRef.current.style.opacity = '1'
+        
         setIsPlaying(true)
         
-        try {
-          await videoRef.current.play()
-        } catch (playError) {
-          console.warn('Autoplay failed:', playError)
+        // Better play handling
+        const playPromise = videoRef.current.play()
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('Video playback started successfully')
+            })
+            .catch(error => {
+              console.warn('Autoplay failed:', error)
+              // Try to play again after a short delay
+              setTimeout(() => {
+                if (videoRef.current) {
+                  videoRef.current.play().catch(console.warn)
+                }
+              }, 500)
+            })
         }
       }
     } catch (err: any) {
@@ -173,16 +191,17 @@ function App() {
         {activeFeature && (
           <section className="inspection-section">
             <div className="section-header">
-              <button 
-                className="back-button"
-                onClick={() => {
-                  setActiveFeature(null)
-                  stopCamera()
-                  setCapturedImage(null)
-                }}
-              >
-                ← Back
-              </button>
+                             <button 
+                 className="back-button"
+                 onClick={() => {
+                   setActiveFeature(null)
+                   stopCamera()
+                   setCapturedImage(null)
+                 }}
+               >
+                 <span>←</span>
+                 <span>{t('actions.back')}</span>
+               </button>
               <h2>{features.find(f => f.id === activeFeature)?.title}</h2>
             </div>
 

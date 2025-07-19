@@ -26,7 +26,8 @@ const resources = {
         analyze: "Analyze",
         stop: "Stop",
         clear: "Clear",
-        test: "Test Detection"
+        test: "Test Detection",
+        back: "Back"
       },
       status: {
         ready: "Ready",
@@ -65,7 +66,8 @@ const resources = {
         analyze: "تحليل",
         stop: "إيقاف",
         clear: "مسح",
-        test: "اختبار الكشف"
+        test: "اختبار الكشف",
+        back: "رجوع"
       },
       status: {
         ready: "جاهز",
