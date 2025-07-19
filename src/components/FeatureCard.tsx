@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import './FeatureCard.css';
 
 interface FeatureCardProps {
-  icon: string;
+  icon: React.ReactNode;
   feature: string;
   description: string;
   isActive?: boolean;

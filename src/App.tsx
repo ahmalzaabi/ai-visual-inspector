@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './components/LanguageSwitcher'
 import FeatureCard from './components/FeatureCard'
+import { AssemblyIcon, InspectionIcon, RepairIcon, MaintenanceIcon, QualityIcon } from './components/TechIcons'
 import './App.css'
 
 function App() {
@@ -17,31 +18,31 @@ function App() {
   const features = [
     {
       id: 'assembly',
-      icon: '🔧',
+      icon: <AssemblyIcon />,
       title: t('features.assembly'),
       description: t('descriptions.assembly')
     },
     {
       id: 'inspection',
-      icon: '🔍',
+      icon: <InspectionIcon />,
       title: t('features.inspection'),
       description: t('descriptions.inspection')
     },
     {
       id: 'repair',
-      icon: '🛠️',
+      icon: <RepairIcon />,
       title: t('features.repair'),
       description: t('descriptions.repair')
     },
     {
       id: 'maintenance',
-      icon: '📊',
+      icon: <MaintenanceIcon />,
       title: t('features.maintenance'),
       description: t('descriptions.maintenance')
     },
     {
       id: 'quality',
-      icon: '✅',
+      icon: <QualityIcon />,
       title: t('features.quality'),
       description: t('descriptions.quality')
     }

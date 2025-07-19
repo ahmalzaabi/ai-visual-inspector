@@ -1,0 +1,533 @@
+/* Base Tech Icon Styles */
+.tech-icon {
+  width: 60px;
+  height: 60px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.1));
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tech-icon:hover {
+  filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.3));
+  transform: scale(1.1);
+}
+
+/* Assembly Verification Icon */
+.assembly-icon .gear-outer {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(0, 212, 255, 0.8);
+  border-radius: 50%;
+  position: relative;
+  animation: rotate-gear 3s linear infinite;
+}
+
+.assembly-icon .gear-inner {
+  width: 16px;
+  height: 16px;
+  background: rgba(0, 212, 255, 0.6);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.assembly-icon .gear-teeth {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  top: -2px;
+  left: -2px;
+}
+
+.assembly-icon .gear-teeth::before,
+.assembly-icon .gear-teeth::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 8px;
+  background: rgba(0, 212, 255, 0.8);
+  top: -2px;
+  left: 18px;
+  box-shadow: 
+    0 42px 0 rgba(0, 212, 255, 0.8),
+    -18px 21px 0 rgba(0, 212, 255, 0.8),
+    18px 21px 0 rgba(0, 212, 255, 0.8);
+}
+
+.assembly-icon .circuit-lines {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.assembly-icon .line {
+  position: absolute;
+  background: rgba(0, 255, 136, 0.6);
+  animation: pulse-line 2s ease-in-out infinite;
+}
+
+.assembly-icon .line-1 {
+  width: 20px;
+  height: 1px;
+  top: 10px;
+  left: 5px;
+  animation-delay: 0s;
+}
+
+.assembly-icon .line-2 {
+  width: 1px;
+  height: 15px;
+  bottom: 8px;
+  right: 10px;
+  animation-delay: 0.7s;
+}
+
+.assembly-icon .line-3 {
+  width: 12px;
+  height: 1px;
+  top: 50%;
+  right: 5px;
+  animation-delay: 1.4s;
+}
+
+/* Deep Inspection Icon */
+.inspection-icon .magnify-glass {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+
+.inspection-icon .lens {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(0, 212, 255, 0.8);
+  border-radius: 50%;
+  position: relative;
+}
+
+.inspection-icon .handle {
+  width: 2px;
+  height: 12px;
+  background: rgba(0, 212, 255, 0.8);
+  position: absolute;
+  bottom: -10px;
+  right: 2px;
+  transform: rotate(45deg);
+}
+
+.inspection-icon .crosshairs {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.inspection-icon .crosshair-h,
+.inspection-icon .crosshair-v {
+  position: absolute;
+  background: rgba(0, 255, 136, 0.8);
+}
+
+.inspection-icon .crosshair-h {
+  width: 16px;
+  height: 1px;
+  top: -0.5px;
+  left: -8px;
+}
+
+.inspection-icon .crosshair-v {
+  width: 1px;
+  height: 16px;
+  top: -8px;
+  left: -0.5px;
+}
+
+.inspection-icon .scan-lines {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.inspection-icon .scan-line {
+  position: absolute;
+  width: 30px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.8), transparent);
+  animation: scan-sweep 2.5s ease-in-out infinite;
+}
+
+.inspection-icon .scan-1 {
+  top: 15px;
+  left: 15px;
+  animation-delay: 0s;
+}
+
+.inspection-icon .scan-2 {
+  top: 30px;
+  left: 15px;
+  animation-delay: 0.8s;
+}
+
+.inspection-icon .scan-3 {
+  top: 45px;
+  left: 15px;
+  animation-delay: 1.6s;
+}
+
+/* Repair Procedures Icon */
+.repair-icon .wrench {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  transform: rotate(45deg);
+}
+
+.repair-icon .wrench-head {
+  width: 8px;
+  height: 12px;
+  background: rgba(0, 212, 255, 0.8);
+  border-radius: 2px 2px 0 0;
+  position: relative;
+}
+
+.repair-icon .wrench-head::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 3px;
+  background: rgba(0, 212, 255, 0.8);
+  top: 2px;
+  left: -2px;
+}
+
+.repair-icon .wrench-body {
+  width: 3px;
+  height: 20px;
+  background: rgba(0, 212, 255, 0.8);
+  margin: 0 auto;
+}
+
+.repair-icon .diagnostic-grid {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.repair-icon .grid-dot {
+  width: 3px;
+  height: 3px;
+  background: rgba(0, 255, 136, 0.8);
+  border-radius: 50%;
+  position: absolute;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.repair-icon .grid-1 {
+  top: 8px;
+  left: 8px;
+  animation-delay: 0s;
+}
+
+.repair-icon .grid-2 {
+  top: 8px;
+  right: 8px;
+  animation-delay: 0.5s;
+}
+
+.repair-icon .grid-3 {
+  bottom: 8px;
+  left: 8px;
+  animation-delay: 1s;
+}
+
+.repair-icon .grid-4 {
+  bottom: 8px;
+  right: 8px;
+  animation-delay: 1.5s;
+}
+
+.repair-icon .signal-waves {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+.repair-icon .wave {
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(0, 255, 136, 0.6);
+  border-radius: 50%;
+  position: absolute;
+  animation: wave-expand 2s ease-out infinite;
+}
+
+.repair-icon .wave-1 {
+  animation-delay: 0s;
+}
+
+.repair-icon .wave-2 {
+  animation-delay: 1s;
+}
+
+/* Visual Predictive Maintenance Icon */
+.maintenance-icon .chart-container {
+  position: relative;
+  width: 32px;
+  height: 24px;
+}
+
+.maintenance-icon .chart-bars {
+  display: flex;
+  align-items: end;
+  height: 100%;
+  gap: 3px;
+}
+
+.maintenance-icon .bar {
+  width: 4px;
+  background: rgba(0, 212, 255, 0.8);
+  border-radius: 1px 1px 0 0;
+  animation: bar-growth 3s ease-in-out infinite;
+}
+
+.maintenance-icon .bar-1 {
+  height: 8px;
+  animation-delay: 0s;
+}
+
+.maintenance-icon .bar-2 {
+  height: 16px;
+  animation-delay: 0.3s;
+}
+
+.maintenance-icon .bar-3 {
+  height: 12px;
+  animation-delay: 0.6s;
+}
+
+.maintenance-icon .bar-4 {
+  height: 20px;
+  animation-delay: 0.9s;
+}
+
+.maintenance-icon .trend-line {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 28px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.8) 0%, rgba(0, 255, 136, 0.4) 100%);
+  transform: rotate(15deg);
+  transform-origin: left center;
+}
+
+.maintenance-icon .trend-line::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: -2px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid rgba(0, 255, 136, 0.8);
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+}
+
+.maintenance-icon .analytics-dots {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.maintenance-icon .dot {
+  width: 2px;
+  height: 2px;
+  background: rgba(0, 255, 136, 0.8);
+  border-radius: 50%;
+  position: absolute;
+  animation: pulse-dot 2.5s ease-in-out infinite;
+}
+
+.maintenance-icon .dot-1 {
+  top: 6px;
+  left: 40px;
+  animation-delay: 0s;
+}
+
+.maintenance-icon .dot-2 {
+  top: 12px;
+  left: 45px;
+  animation-delay: 0.8s;
+}
+
+.maintenance-icon .dot-3 {
+  top: 18px;
+  left: 50px;
+  animation-delay: 1.6s;
+}
+
+/* Quality Control Icon */
+.quality-icon .verification-badge {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.quality-icon .badge-outer {
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgba(0, 212, 255, 0.8);
+  border-radius: 50%;
+  position: relative;
+}
+
+.quality-icon .badge-inner {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(0, 212, 255, 0.6);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.quality-icon .checkmark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.quality-icon .check-stem {
+  width: 2px;
+  height: 8px;
+  background: rgba(0, 255, 136, 0.9);
+  position: absolute;
+  top: -2px;
+  left: 2px;
+  transform: rotate(45deg);
+}
+
+.quality-icon .check-kick {
+  width: 2px;
+  height: 4px;
+  background: rgba(0, 255, 136, 0.9);
+  position: absolute;
+  top: 2px;
+  left: -2px;
+  transform: rotate(-45deg);
+}
+
+.quality-icon .quality-rings {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.quality-icon .ring {
+  position: absolute;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  border-radius: 50%;
+  animation: ring-pulse 3s ease-in-out infinite;
+}
+
+.quality-icon .ring-1 {
+  width: 40px;
+  height: 40px;
+  top: 10px;
+  left: 10px;
+  animation-delay: 0s;
+}
+
+.quality-icon .ring-2 {
+  width: 48px;
+  height: 48px;
+  top: 6px;
+  left: 6px;
+  animation-delay: 1s;
+}
+
+.quality-icon .ring-3 {
+  width: 56px;
+  height: 56px;
+  top: 2px;
+  left: 2px;
+  animation-delay: 2s;
+}
+
+/* Animations */
+@keyframes rotate-gear {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-line {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes scan-sweep {
+  0%, 100% { opacity: 0; transform: translateX(-10px); }
+  50% { opacity: 1; transform: translateX(10px); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+@keyframes wave-expand {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes bar-growth {
+  0%, 100% { transform: scaleY(0.8); }
+  50% { transform: scaleY(1.2); }
+}
+
+@keyframes ring-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tech-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .assembly-icon .gear-outer {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .inspection-icon .magnify-glass {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .maintenance-icon .chart-container {
+    width: 28px;
+    height: 20px;
+  }
+  
+  .quality-icon .verification-badge {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tech-icon {
+    width: 45px;
+    height: 45px;
+  }
+} 
