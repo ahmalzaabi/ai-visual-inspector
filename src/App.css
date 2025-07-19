@@ -33,7 +33,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: env(safe-area-inset-top, 0px);
+  height: env(safe-area-inset-top, 44px);
   background: 
     radial-gradient(ellipse at top, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
     radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
@@ -42,18 +42,31 @@
   pointer-events: none;
 }
 
+/* Additional safe area coverage for different iPhone models */
+.app::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px; /* Standard iPhone island height */
+  background: #0a0a0a;
+  z-index: 999;
+  pointer-events: none;
+}
+
 /* Header */
 .app-header {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(10, 10, 10, 0.95);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 101;
   /* Ensure header background extends into safe area */
-  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
-  padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+  margin-top: calc(-1 * env(safe-area-inset-top, 44px));
+  padding-top: calc(1rem + env(safe-area-inset-top, 44px));
 }
 
 .header-content {
@@ -233,6 +246,11 @@
 .camera-placeholder {
   text-align: center;
   padding: 2rem;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.camera-placeholder.hidden {
+  display: none;
 }
 
 .camera-icon {
@@ -256,6 +274,10 @@
   /* Ensure camera container is properly displayed */
   position: relative;
   min-height: 300px;
+}
+
+.camera-active.hidden {
+  display: none;
 }
 
 /* Video container */

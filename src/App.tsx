@@ -211,67 +211,67 @@ function App() {
               </div>
             )}
 
-            <div className="camera-container">
-              {!isPlaying ? (
-                <div className="camera-placeholder">
-                  <div className="camera-icon">📷</div>
-                  <p>{t('camera.placeholder')}</p>
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={startCamera}
-                  >
-                    📱 {t('camera.start')}
-                  </button>
-                </div>
-              ) : (
-                <div className="camera-active">
-                  <div className="video-container">
-                    <video 
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="video-feed"
-                      onClick={() => {
-                        if (videoRef.current) {
-                          videoRef.current.play().catch(console.warn)
-                        }
-                      }}
-                    />
-                    
-                    {showCompletion && (
-                      <div className="completion-overlay">
-                        <div className="completion-animation">
-                          <div className="checkmark">✓</div>
-                          <p>Perfect! 👍</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="camera-controls">
-                    <button 
-                      className="btn btn-capture" 
-                      onClick={capturePhoto}
-                    >
-                      📸 {t('actions.capture')}
-                    </button>
-                    <button 
-                      className="btn btn-success" 
-                      onClick={detectThumbsUp}
-                    >
-                      👍 {t('actions.test')}
-                    </button>
-                    <button 
-                      className="btn btn-secondary" 
-                      onClick={stopCamera}
-                    >
-                      {t('actions.stop')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                         <div className="camera-container">
+               {/* Camera placeholder - shown when not playing */}
+               <div className={`camera-placeholder ${isPlaying ? 'hidden' : ''}`}>
+                 <div className="camera-icon">📷</div>
+                 <p>{t('camera.placeholder')}</p>
+                 <button 
+                   className="btn btn-primary" 
+                   onClick={startCamera}
+                 >
+                   📱 {t('camera.start')}
+                 </button>
+               </div>
+
+               {/* Camera active - always rendered, controlled by CSS */}
+               <div className={`camera-active ${!isPlaying ? 'hidden' : ''}`}>
+                 <div className="video-container">
+                   <video 
+                     ref={videoRef}
+                     autoPlay
+                     playsInline
+                     muted
+                     className="video-feed"
+                     onClick={() => {
+                       if (videoRef.current) {
+                         videoRef.current.play().catch(console.warn)
+                       }
+                     }}
+                   />
+                   
+                   {showCompletion && (
+                     <div className="completion-overlay">
+                       <div className="completion-animation">
+                         <div className="checkmark">✓</div>
+                         <p>Perfect! 👍</p>
+                       </div>
+                     </div>
+                   )}
+                 </div>
+                 
+                 <div className="camera-controls">
+                   <button 
+                     className="btn btn-capture" 
+                     onClick={capturePhoto}
+                   >
+                     📸 {t('actions.capture')}
+                   </button>
+                   <button 
+                     className="btn btn-success" 
+                     onClick={detectThumbsUp}
+                   >
+                     👍 {t('actions.test')}
+                   </button>
+                   <button 
+                     className="btn btn-secondary" 
+                     onClick={stopCamera}
+                   >
+                     {t('actions.stop')}
+                   </button>
+                 </div>
+               </div>
+             </div>
 
             {capturedImage && (
               <div className="captured-image-container">

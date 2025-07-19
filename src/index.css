@@ -81,9 +81,18 @@ html {
 html,
 body {
   height: 100%;
-  background: var(--bg-primary);
+  background: #0a0a0a !important;
   color: var(--text-primary);
   overflow-x: hidden;
+}
+
+/* Ensure no white background anywhere */
+html {
+  background-color: #0a0a0a !important;
+}
+
+body {
+  background-color: #0a0a0a !important;
 }
 
 body {
@@ -252,11 +261,15 @@ ul, ol {
   }
   
   /* Better safe area handling for iOS */
-  .app::before {
-    background: 
-      radial-gradient(ellipse at top, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-      linear-gradient(180deg, #0a0a0a 0%, #111827 100%);
+  .app::before,
+  .app::after {
+    background: #0a0a0a !important;
+  }
+  
+  /* Force dark background on iOS */
+  html,
+  body {
+    background: #0a0a0a !important;
   }
 }
 
