@@ -1,13 +1,51 @@
 import { useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from './components/LanguageSwitcher'
+import FeatureCard from './components/FeatureCard'
 import './App.css'
 
 function App() {
+  const { t } = useTranslation()
+  const [activeFeature, setActiveFeature] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showCompletion, setShowCompletion] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const features = [
+    {
+      id: 'assembly',
+      icon: '🔧',
+      title: t('features.assembly'),
+      description: t('descriptions.assembly')
+    },
+    {
+      id: 'inspection',
+      icon: '🔍',
+      title: t('features.inspection'),
+      description: t('descriptions.inspection')
+    },
+    {
+      id: 'repair',
+      icon: '🛠️',
+      title: t('features.repair'),
+      description: t('descriptions.repair')
+    },
+    {
+      id: 'maintenance',
+      icon: '📊',
+      title: t('features.maintenance'),
+      description: t('descriptions.maintenance')
+    },
+    {
+      id: 'quality',
+      icon: '✅',
+      title: t('features.quality'),
+      description: t('descriptions.quality')
+    }
+  ]
 
   const startCamera = useCallback(async () => {
     try {
@@ -19,14 +57,13 @@ function App() {
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment', // Always back camera
+          facingMode: 'environment',
           width: { ideal: 1920, max: 1920 },
           height: { ideal: 1080, max: 1080 }
         }
       })
       
       if (videoRef.current) {
-        // Stop any existing stream
         if (videoRef.current.srcObject) {
           const oldStream = videoRef.current.srcObject as MediaStream
           oldStream.getTracks().forEach(track => track.stop())
@@ -35,7 +72,6 @@ function App() {
         videoRef.current.srcObject = stream
         setIsPlaying(true)
         
-        // Auto-play
         try {
           await videoRef.current.play()
         } catch (playError) {
@@ -44,9 +80,9 @@ function App() {
       }
     } catch (err: any) {
       console.error('Camera error:', err)
-      setError(`Camera Error: ${err.message}`)
+      setError(`${t('camera.error')}: ${err.message}`)
     }
-  }, [])
+  }, [t])
 
   const stopCamera = useCallback(() => {
     if (videoRef.current?.srcObject) {
@@ -78,129 +114,185 @@ function App() {
     setCapturedImage(null)
   }, [])
 
-  // Simple thumbs up detection (placeholder - replace with actual ML later)
   const detectThumbsUp = useCallback(() => {
-    // Simulate thumbs up detection
     setShowCompletion(true)
     setTimeout(() => setShowCompletion(false), 2000)
   }, [])
 
+  const handleFeatureClick = (featureId: string) => {
+    setActiveFeature(featureId)
+    // Auto-start camera when a feature is selected
+    if (!isPlaying) {
+      startCamera()
+    }
+  }
+
   return (
     <div className="app">
+      {/* Header with Language Switcher */}
       <header className="app-header">
-        <h1>🔍 AI Visual Inspector</h1>
-        <p>AI-powered visual inspection</p>
+        <div className="header-content">
+          <div className="header-title">
+            <h1>{t('title')}</h1>
+            <p>{t('subtitle')}</p>
+          </div>
+          <LanguageSwitcher />
+        </div>
       </header>
 
       <main className="app-main">
-        {error && (
-          <div className="error-message">
-            ⚠️ {error}
-          </div>
+        {!activeFeature && (
+          <>
+            {/* Features Grid */}
+            <section className="features-section">
+              <div className="features-grid">
+                {features.map((feature) => (
+                  <FeatureCard
+                    key={feature.id}
+                    icon={feature.icon}
+                    feature={feature.title}
+                    description={feature.description}
+                    isActive={activeFeature === feature.id}
+                    onClick={() => handleFeatureClick(feature.id)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* Status Bar */}
+            <div className="status-bar">
+              <div className="status-indicator ready">
+                <span className="status-dot"></span>
+                <span>{t('status.ready')}</span>
+              </div>
+            </div>
+          </>
         )}
 
-        <div className="camera-container">
-          {!isPlaying ? (
-            <div className="camera-placeholder">
-              <div className="camera-icon">📷</div>
-              <p>Start Camera</p>
+        {/* Active Feature Camera Interface */}
+        {activeFeature && (
+          <section className="inspection-section">
+            <div className="section-header">
               <button 
-                className="btn btn-primary" 
-                onClick={startCamera}
-              >
-                📱 Start Camera
-              </button>
-            </div>
-          ) : null}
-          
-          {/* Camera View */}
-          <div 
-            className="camera-active"
-            style={{ 
-              display: isPlaying ? 'flex' : 'none',
-              width: '100%',
-              flexDirection: 'column',
-              gap: '1rem'
-            }}
-          >
-            <div className="video-container">
-              <video 
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="video-feed"
+                className="back-button"
                 onClick={() => {
-                  if (videoRef.current) {
-                    videoRef.current.play().catch(console.warn)
-                  }
+                  setActiveFeature(null)
+                  stopCamera()
+                  setCapturedImage(null)
                 }}
-              />
-              
-              {/* Completion Animation */}
-              {showCompletion && (
-                <div className="completion-overlay">
-                  <div className="completion-animation">
-                    <div className="checkmark">✓</div>
-                    <p>Perfect! 👍</p>
+              >
+                ← Back
+              </button>
+              <h2>{features.find(f => f.id === activeFeature)?.title}</h2>
+            </div>
+
+            {error && (
+              <div className="error-message">
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div className="camera-container">
+              {!isPlaying ? (
+                <div className="camera-placeholder">
+                  <div className="camera-icon">📷</div>
+                  <p>{t('camera.placeholder')}</p>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={startCamera}
+                  >
+                    📱 {t('camera.start')}
+                  </button>
+                </div>
+              ) : (
+                <div className="camera-active">
+                  <div className="video-container">
+                    <video 
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="video-feed"
+                      onClick={() => {
+                        if (videoRef.current) {
+                          videoRef.current.play().catch(console.warn)
+                        }
+                      }}
+                    />
+                    
+                    {showCompletion && (
+                      <div className="completion-overlay">
+                        <div className="completion-animation">
+                          <div className="checkmark">✓</div>
+                          <p>Perfect! 👍</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="camera-controls">
+                    <button 
+                      className="btn btn-capture" 
+                      onClick={capturePhoto}
+                    >
+                      📸 {t('actions.capture')}
+                    </button>
+                    <button 
+                      className="btn btn-success" 
+                      onClick={detectThumbsUp}
+                    >
+                      👍 {t('actions.test')}
+                    </button>
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={stopCamera}
+                    >
+                      {t('actions.stop')}
+                    </button>
                   </div>
                 </div>
               )}
             </div>
-            
-            <div className="camera-controls">
-              <button 
-                className="btn btn-capture" 
-                onClick={capturePhoto}
-              >
-                📸 Capture
-              </button>
-              <button 
-                className="btn btn-success" 
-                onClick={detectThumbsUp}
-              >
-                👍 Test Detection
-              </button>
-              <button 
-                className="btn btn-secondary" 
-                onClick={stopCamera}
-              >
-                Stop
-              </button>
-            </div>
-          </div>
-        </div>
 
-        {capturedImage && (
-          <div className="captured-image-container">
-            <h3>📸 Captured Image</h3>
-            <img 
-              src={capturedImage} 
-              alt="Captured" 
-              className="captured-image"
-            />
-            <div className="image-actions">
-              <button 
-                className="btn btn-success"
-                onClick={() => alert('AI Analysis ready for implementation!')}
-              >
-                🤖 Analyze
-              </button>
-              <button 
-                className="btn btn-secondary" 
-                onClick={clearCapture}
-              >
-                🗑️ Clear
-              </button>
-            </div>
-          </div>
+            {capturedImage && (
+              <div className="captured-image-container">
+                <h3>📸 Captured Image</h3>
+                <img 
+                  src={capturedImage} 
+                  alt="Captured" 
+                  className="captured-image"
+                />
+                <div className="image-actions">
+                  <button 
+                    className="btn btn-success"
+                    onClick={() => alert('AI Analysis ready for implementation!')}
+                  >
+                    🤖 {t('actions.analyze')}
+                  </button>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={clearCapture}
+                  >
+                    🗑️ {t('actions.clear')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+          </section>
         )}
-
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
       </main>
 
+      {/* Footer */}
       <footer className="app-footer">
-        <p>PWA • Camera • AI Ready</p>
+        <div className="footer-content">
+          <span>AI Visual Inspector</span>
+          <span className="footer-separator">•</span>
+          <span>PWA Ready</span>
+          <span className="footer-separator">•</span>
+          <span>Camera Enabled</span>
+        </div>
       </footer>
     </div>
   )
