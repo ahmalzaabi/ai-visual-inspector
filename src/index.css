@@ -208,14 +208,14 @@ ul, ol {
   padding: 0;
 }
 
-/* Fix text selection highlighting */
+/* Normal text selection highlighting */
 ::selection {
-  background: rgba(0, 212, 255, 0.2);
+  background: rgba(0, 212, 255, 0.3);
   color: white;
 }
 
 ::-moz-selection {
-  background: rgba(0, 212, 255, 0.2);
+  background: rgba(0, 212, 255, 0.3);
   color: white;
 }
 
