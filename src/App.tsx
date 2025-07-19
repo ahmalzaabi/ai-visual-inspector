@@ -52,17 +52,46 @@ function App() {
     try {
       setError(null)
       
+      // Check if we're in PWA mode
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                    (window.navigator as any).standalone ||
+                    document.referrer.includes('android-app://');
+      
       if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('Camera not supported')
+        throw new Error('Camera not supported in this browser')
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // For iOS PWA, request permissions more explicitly
+      if (isPWA && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        // Try to get permission first
+        try {
+          const permissionStatus = await (navigator as any).permissions?.query({ name: 'camera' });
+          if (permissionStatus && permissionStatus.state === 'denied') {
+            throw new Error('Camera permission denied. Please enable in Settings > Safari > Camera');
+          }
+        } catch (permError) {
+          console.warn('Permission check failed:', permError);
+        }
+      }
+
+      const constraints = {
         video: {
           facingMode: 'environment',
           width: { ideal: 1920, max: 1920 },
           height: { ideal: 1080, max: 1080 }
         }
-      })
+      };
+
+      // For PWA, use more conservative constraints
+      if (isPWA) {
+        constraints.video = {
+          facingMode: 'environment',
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 }
+        };
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
       
       if (videoRef.current) {
         if (videoRef.current.srcObject) {
@@ -99,7 +128,20 @@ function App() {
       }
     } catch (err: any) {
       console.error('Camera error:', err)
-      setError(`${t('camera.error')}: ${err.message}`)
+      
+      // More specific error messages for PWA
+      let errorMessage = err.message;
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Camera access denied. Please allow camera permissions and try again.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'No camera found on this device.';
+      } else if (err.name === 'NotSupportedError') {
+        errorMessage = 'Camera not supported in PWA mode. Try opening in Safari browser.';
+      } else if (err.name === 'SecurityError') {
+        errorMessage = 'Camera blocked by security policy. Try opening in Safari browser.';
+      }
+      
+      setError(`${t('camera.error')}: ${errorMessage}`)
     }
   }, [t])
 

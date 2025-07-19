@@ -13,12 +13,13 @@ export default defineConfig({
         name: 'AI Visual Inspector',
         short_name: 'AI Inspector',
         description: 'AI-powered visual inspection application with camera access',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#0a0a0a',
+        background_color: '#0a0a0a',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
+        categories: ['productivity', 'utilities'],
         icons: [
           {
             src: 'icons/icon-192.png',
@@ -40,19 +41,21 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        // Don't cache the main app.js to avoid camera access issues
-        dontCacheBustURLsMatching: /\.\w{8}\./,
-        navigateFallback: null, // Disable offline fallback for camera pages
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: null,
+        // Exclude camera-related files from caching
+        navigateFallbackDenylist: [/^\/(camera|stream)/],
         runtimeCaching: [
           {
             urlPattern: /^https?.*/,
-            handler: 'NetworkFirst', // Always try network first for API calls
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'https-calls',
-              networkTimeoutSeconds: 15,
+              networkTimeoutSeconds: 5,
               expiration: {
-                maxEntries: 150,
-                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+                maxEntries: 50,
+                maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
               },
               cacheableResponse: {
                 statuses: [0, 200],
