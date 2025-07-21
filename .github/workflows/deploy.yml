@@ -32,16 +32,30 @@ jobs:
     - name: Build project
       run: npm run build
       
+    - name: Bundle analysis (on main branch)
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "📦 Bundle Analysis:"
+        ls -la dist/assets/
+        du -sh dist/
+        echo "Build completed successfully! 🚀"
+      
     - name: Deploy to Netlify
       uses: nwtgck/actions-netlify@v2
       with:
         publish-dir: './dist'
         production-branch: main
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        deploy-message: "Deploy from GitHub Actions"
+        deploy-message: "Deploy from GitHub Actions - Optimized build"
         enable-pull-request-comment: true
         enable-commit-comment: true
         overwrites-pull-request-comment: true
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }} 
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        
+    - name: Deployment success notification
+      if: success()
+      run: |
+        echo "🎉 Deployment successful!"
+        echo "Your optimized AI Visual Inspector is now live!" 

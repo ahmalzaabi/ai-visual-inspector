@@ -62,6 +62,21 @@ export default defineConfig({
               },
             },
           },
+          // Future ML model caching strategy
+          {
+            urlPattern: /\.(?:tflite|onnx|bin|json|pb)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'ml-models',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
         ],
       },
       devOptions: {
@@ -69,4 +84,26 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    // Optimize for production builds
+    target: 'esnext',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        // Code splitting for better caching
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          i18n: ['i18next', 'react-i18next'],
+          // Reserve space for future ML chunks
+          // ml: ['@tensorflow/tfjs', 'opencv.js'] // Will add when implementing ML
+        }
+      }
+    },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000
+  },
+  // Performance optimizations
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'i18next', 'react-i18next']
+  }
 })

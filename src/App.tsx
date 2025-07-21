@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './components/LanguageSwitcher'
 import FeatureCard from './components/FeatureCard'
+import ErrorBoundary from './components/ErrorBoundary'
 import { AssemblyIcon, InspectionIcon, RepairIcon, MaintenanceIcon, QualityIcon } from './components/TechIcons'
 import './App.css'
 
@@ -29,6 +30,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [showCompletion, setShowCompletion] = useState(false)
   const [isPWA, setIsPWA] = useState(false)
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -74,11 +76,11 @@ function App() {
         throw new Error('Camera not supported in this browser')
       }
 
-              // Stop any existing streams first
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-          streamRef.current = null;
-        }
+      // Stop any existing streams first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+        streamRef.current = null;
+      }
 
       // For iOS PWA, request permissions more explicitly
       if (isPWA && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
@@ -89,128 +91,87 @@ function App() {
             throw new Error('Camera permission denied. Please enable in Settings > Safari > Camera');
           }
         } catch (permError) {
-          console.warn('Permission check failed:', permError);
+          console.warn('Permission query failed, proceeding with camera request:', permError);
         }
       }
 
+      // Optimized constraints for ML processing and mobile compatibility
       const constraints = {
         video: {
-          facingMode: 'environment',
-          width: { ideal: 1920, max: 1920 },
-          height: { ideal: 1080, max: 1080 }
-        }
-      };
-
-      // For PWA, use more conservative constraints
-      if (isPWA) {
-        constraints.video = {
-          facingMode: 'environment',
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 }
-        };
+          width: { ideal: 640, max: 1280 }, // Reduced for better ML performance
+          height: { ideal: 480, max: 720 }, // Reduced for better ML performance
+          facingMode: 'environment', // Prefer back camera
+          frameRate: { ideal: 15, max: 30 } // Reduced frame rate for better performance
+        },
+        audio: false
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      console.log('📱 Requesting camera access...')
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
       
-      // Keep stream reference to prevent garbage collection
-      streamRef.current = stream;
-      setStream(stream);
-      
+      streamRef.current = mediaStream
+      setStream(mediaStream)
+      setIsPlaying(true)
+
       if (videoRef.current) {
-        const videoElement = videoRef.current;
+        videoRef.current.srcObject = mediaStream
         
-        if (videoElement.srcObject) {
-          const oldStream = videoElement.srcObject as MediaStream
-          oldStream.getTracks().forEach(track => track.stop())
+        // Enhanced video setup for mobile
+        videoRef.current.onloadedmetadata = () => {
+          console.log('📹 Video metadata loaded')
+          videoRef.current?.play().catch(console.warn)
         }
         
-        // For iOS PWA, set additional video attributes
-        if (isPWA && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
-          videoElement.setAttribute('playsinline', 'true');
-          videoElement.setAttribute('webkit-playsinline', 'true');
-          videoElement.setAttribute('x-webkit-airplay', 'allow');
-          videoElement.muted = true; // Required for autoplay in iOS
+        videoRef.current.oncanplay = () => {
+          console.log('📹 Video ready to play')
         }
-        
-        videoElement.srcObject = stream;
-        
-        // Ensure video properties are set for visibility
-        videoElement.style.display = 'block';
-        videoElement.style.visibility = 'visible';
-        videoElement.style.opacity = '1';
-        
-        // Add event listeners to detect stream loss
-        const handleStreamEnd = () => {
-          console.warn('Stream ended, attempting to restart...');
-          if (streamRef.current && streamRef.current.active) {
-            // Stream is still active, this might be a false alarm
-            return;
-          }
-          // Only restart if we're still supposed to be playing
-          if (isPlaying) {
-            setTimeout(() => startCamera(), 1000);
-          }
-        };
-        
-        const handleVideoError = (e: Event) => {
-          console.error('Video error:', e);
-          if (isPlaying) {
-            setTimeout(() => startCamera(), 1000);
-          }
-        };
-        
-        stream.getTracks().forEach(track => {
-          track.addEventListener('ended', handleStreamEnd);
-        });
-        
-        videoElement.addEventListener('error', handleVideoError);
-        
-        setIsPlaying(true);
-        
-        // Better play handling with multiple attempts
-        const attemptPlay = async (attempts = 0) => {
-          if (attempts > 3) {
-            throw new Error('Failed to start video playback after multiple attempts');
-          }
+
+        // Mobile specific adjustments
+        if ('playsInline' in videoRef.current) {
+          videoRef.current.playsInline = true
+        }
+      }
+
+      console.log('✅ Camera started successfully')
+    } catch (error) {
+      console.error('❌ Camera error:', error)
+      
+      let errorMessage = 'Failed to start camera'
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'Camera permission denied. Please allow camera access and try again.'
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = 'No camera found on this device.'
+        } else if (error.name === 'NotSupportedError') {
+          errorMessage = 'Camera not supported in this browser.'
+        } else if (error.name === 'OverconstrainedError') {
+          errorMessage = 'Camera configuration not supported. Trying basic settings...'
           
+          // Fallback with basic constraints
           try {
-            await videoElement.play();
-            console.log('Video playback started successfully');
-          } catch (error) {
-            console.warn(`Autoplay attempt ${attempts + 1} failed:`, error);
-            
-            if (attempts === 0) {
-              // First attempt failed, try with user interaction
-              videoElement.muted = true;
-              videoElement.controls = false;
+            const basicStream = await navigator.mediaDevices.getUserMedia({ 
+              video: true, 
+              audio: false 
+            })
+            streamRef.current = basicStream
+            setStream(basicStream)
+            setIsPlaying(true)
+            if (videoRef.current) {
+              videoRef.current.srcObject = basicStream
             }
-            
-            // Wait and try again
-            await new Promise(resolve => setTimeout(resolve, 500));
-            return attemptPlay(attempts + 1);
+            return
+          } catch (fallbackError) {
+            errorMessage = 'Camera access failed even with basic settings.'
           }
-        };
-        
-        await attemptPlay();
-      }
-    } catch (err: any) {
-      console.error('Camera error:', err)
-      
-      // More specific error messages for PWA
-      let errorMessage = err.message;
-      if (err.name === 'NotAllowedError') {
-        errorMessage = 'Camera access denied. Please allow camera permissions and try again.';
-      } else if (err.name === 'NotFoundError') {
-        errorMessage = 'No camera found on this device.';
-      } else if (err.name === 'NotSupportedError') {
-        errorMessage = 'Camera not supported in PWA mode. Try opening in Safari browser.';
-      } else if (err.name === 'SecurityError') {
-        errorMessage = 'Camera blocked by security policy. Try opening in Safari browser.';
+        } else {
+          errorMessage = error.message
+        }
       }
       
-      setError(`${t('camera.error')}: ${errorMessage}`)
+      setError(errorMessage)
     }
-  }, [t, isPWA, isPlaying])
+  }, [isPWA])
 
   const stopCamera = useCallback(() => {
     if (stream) {
@@ -293,103 +254,122 @@ function App() {
               </div>
             </section>
 
-            {/* Status Bar */}
-            <div className="status-bar">
-              <div className="status-indicator ready">
-                <span className="status-dot"></span>
-                <span>{t('status.ready')}</span>
+            {/* Status Section */}
+            <section className="status-section">
+              <div className="status-card">
+                <h3>📷 Camera Stream Ready</h3>
+                <p>Clean camera interface ready for your custom implementation.</p>
+                <div className="tech-stack">
+                  <span className="tech-badge">Camera API</span>
+                  <span className="tech-badge">PWA</span>
+                  <span className="tech-badge">Mobile Ready</span>
+                </div>
               </div>
-            </div>
+            </section>
           </>
         )}
 
-        {/* Active Feature Camera Interface */}
         {activeFeature && (
-          <section className="inspection-section">
-            <div className="section-header">
-                             <button 
-                 className="back-button"
-                 onClick={() => {
-                   setActiveFeature(null)
-                   stopCamera()
-                   setCapturedImage(null)
-                 }}
-               >
-                 <span>←</span>
-                 <span>{t('actions.back')}</span>
-               </button>
-              <h2>{features.find(f => f.id === activeFeature)?.title}</h2>
+          <ErrorBoundary>
+            <section className="camera-section">
+            <div className="camera-header">
+              <button 
+                className="btn btn-back" 
+                onClick={() => {
+                  setActiveFeature(null)
+                  stopCamera()
+                }}
+              >
+                ← {t('actions.back')}
+              </button>
+              <h2>
+                {features.find(f => f.id === activeFeature)?.title}
+              </h2>
             </div>
 
             {error && (
               <div className="error-message">
-                ⚠️ {error}
+                <span className="error-icon">⚠️</span>
+                <div className="error-content">
+                  <h4>{t('camera.error')}</h4>
+                  <p>{error}</p>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={startCamera}
+                  >
+                    🔄 Try Again
+                  </button>
+                </div>
               </div>
             )}
 
-                         <div className="camera-container">
-               {/* Camera placeholder - shown when not playing */}
-               <div className={`camera-placeholder ${isPlaying ? 'hidden' : ''}`}>
-                 <div className="camera-icon">📷</div>
-                 <p>{t('camera.placeholder')}</p>
-                 <button 
-                   className="btn btn-primary" 
-                   onClick={startCamera}
-                 >
-                   📱 {t('camera.start')}
-                 </button>
-               </div>
+            <div className="camera-container">
+              {/* Camera placeholder */}
+              <div className={`camera-placeholder ${isPlaying ? 'hidden' : ''}`}>
+                <div className="placeholder-content">
+                  <div className="camera-icon">📷</div>
+                  <h3>{t('camera.start')}</h3>
+                  <p>{t('camera.placeholder')}</p>
+                </div>
+                <button 
+                  className="btn btn-primary btn-large" 
+                  onClick={startCamera}
+                  disabled={isPlaying}
+                >
+                  📱 {t('camera.start')}
+                </button>
+              </div>
 
-               {/* Camera active - always rendered, controlled by CSS */}
-               <div className={`camera-active ${!isPlaying ? 'hidden' : ''}`}>
-                 <div className="video-container">
-                   <video 
-                     ref={videoRef}
-                     autoPlay
-                     playsInline
-                     muted
-                     webkit-playsinline="true"
-                     x-webkit-airplay="allow"
-                     className="video-feed"
-                     onClick={() => {
-                       if (videoRef.current) {
-                         videoRef.current.play().catch(console.warn)
-                       }
-                     }}
-                   />
-                   
-                   {showCompletion && (
-                     <div className="completion-overlay">
-                       <div className="completion-animation">
-                         <div className="checkmark">✓</div>
-                         <p>Perfect! 👍</p>
-                       </div>
-                     </div>
-                   )}
-                 </div>
-                 
-                 <div className="camera-controls">
-                   <button 
-                     className="btn btn-capture" 
-                     onClick={capturePhoto}
-                   >
-                     📸 {t('actions.capture')}
-                   </button>
-                   <button 
-                     className="btn btn-success" 
-                     onClick={detectThumbsUp}
-                   >
-                     👍 {t('actions.test')}
-                   </button>
-                   <button 
-                     className="btn btn-secondary" 
-                     onClick={stopCamera}
-                   >
-                     {t('actions.stop')}
-                   </button>
-                 </div>
-               </div>
-             </div>
+              {/* Camera active - always rendered, controlled by CSS */}
+              <div className={`camera-active ${!isPlaying ? 'hidden' : ''}`}>
+                <div className="video-container">
+                  <video 
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    webkit-playsinline="true"
+                    x-webkit-airplay="allow"
+                    className="video-feed"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        videoRef.current.play().catch(console.warn)
+                      }
+                    }}
+                  />
+                  
+                  {showCompletion && (
+                    <div className="completion-overlay">
+                      <div className="completion-animation">
+                        <div className="checkmark">✓</div>
+                        <p>Perfect! 👍</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="camera-controls">
+                  <button 
+                    className="btn btn-capture" 
+                    onClick={capturePhoto}
+                  >
+                    📸 {t('actions.capture')}
+                  </button>
+                  <button 
+                    className="btn btn-success" 
+                    onClick={detectThumbsUp}
+                  >
+                    👍 {t('actions.test')}
+                  </button>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={stopCamera}
+                  >
+                    {t('actions.stop')}
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {capturedImage && (
               <div className="captured-image-container">
@@ -402,7 +382,7 @@ function App() {
                 <div className="image-actions">
                   <button 
                     className="btn btn-success"
-                    onClick={() => alert('AI Analysis ready for implementation!')}
+                    onClick={() => alert('Ready for your custom analysis!')}
                   >
                     🤖 {t('actions.analyze')}
                   </button>
@@ -415,22 +395,13 @@ function App() {
                 </div>
               </div>
             )}
-
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-          </section>
+            </section>
+          </ErrorBoundary>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="app-footer">
-        <div className="footer-content">
-          <span>AI Visual Inspector</span>
-          <span className="footer-separator">•</span>
-          <span>PWA Ready</span>
-          <span className="footer-separator">•</span>
-          <span>Camera Enabled</span>
-        </div>
-      </footer>
+      {/* Hidden canvas for photo capture */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
     </div>
   )
 }
