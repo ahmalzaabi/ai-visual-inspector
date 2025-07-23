@@ -1,5 +1,6 @@
 // Multi-Model ML Service for Breadboard and ESP32 Detection
 // Using Roboflow API for breadboard detection and TensorFlow.js for ESP32
+// Mobile-optimized with memory management
 
 import * as tf from '@tensorflow/tfjs';
 import { roboflowService } from './roboflowService';
@@ -36,6 +37,11 @@ export interface ESP32Analysis {
 class MLService {
   private esp32Model: tf.GraphModel | null = null;
   private isInitialized = false;
+  private memoryCheckInterval: number | null = null;
+  private lastMemoryWarning = 0;
+  private maxMemoryMB = 150; // Memory limit for mobile devices
+  private inferenceCount = 0;
+  private tempTensors: tf.Tensor[] = []; // Track temporary tensors
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
@@ -43,11 +49,16 @@ class MLService {
     console.log('🚀 Loading ESP32 model and initializing Roboflow...');
     
     try {
-      // Setup TensorFlow.js
+      // Setup TensorFlow.js with mobile optimizations
       console.log('📊 TensorFlow.js setup...');
       await tf.ready();
       console.log('🔧 Setting backend to WebGL...');
       await tf.setBackend('webgl');
+      
+      // Configure for mobile performance
+      tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+      tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
+      
       console.log('✅ Backend:', tf.getBackend());
       
       // Load only ESP32 model (breadboard uses Roboflow API)
@@ -61,6 +72,7 @@ class MLService {
       console.log('✅ ESP32 model loaded! Output shape:', esp32Output.shape);
       console.log('🔢 ESP32 output data preview:', esp32Output.dataSync().slice(0, 10));
       
+      // Clean up test tensors
       testInput.dispose();
       esp32Output.dispose();
       
@@ -68,6 +80,9 @@ class MLService {
       console.log('🌐 Checking Roboflow API health...');
       const roboflowHealthy = await roboflowService.checkHealth();
       console.log(`🔍 Roboflow API status: ${roboflowHealthy ? '✅ Healthy' : '❌ Unavailable'}`);
+      
+      // Start memory monitoring
+      this.startMemoryMonitoring();
       
       this.isInitialized = true;
       console.log('🎯 Ready for ESP32 detection (local) and breadboard detection (Roboflow API)!');
@@ -82,7 +97,7 @@ class MLService {
   async detectBreadboard(canvas: HTMLCanvasElement): Promise<BreadboardAnalysis> {
     console.log('🍞 Starting breadboard detection with Roboflow API...');
     
-    // Use Roboflow API for better accuracy
+    // Use Roboflow API for better accuracy and no memory issues
     return await roboflowService.detectBreadboard(canvas);
   }
 
@@ -93,37 +108,50 @@ class MLService {
       await this.initialize();
     }
 
+    // Check memory before inference
+    if (!this.checkMemoryHealth()) {
+      console.warn('⚠️ Memory threshold exceeded, skipping inference');
+      return {
+        detections: [],
+        confidence: 0,
+        processingTime: 0,
+        performance: { preprocessing: 0, inference: 0, postprocessing: 0 }
+      };
+    }
+
     const startTime = performance.now();
-    console.log(`📸 Canvas size: ${canvas.width}x${canvas.height}`);
+    this.inferenceCount++;
+    
+    let inputTensor: tf.Tensor | null = null;
+    let predictions: tf.Tensor | null = null;
 
     try {
-      // 1. Preprocess image
+      // 1. Preprocess image with memory management
       const preprocessStart = performance.now();
       console.log('🔄 Preprocessing ESP32 image...');
-      const inputTensor = tf.browser.fromPixels(canvas)
-        .resizeNearestNeighbor([640, 640])
-        .expandDims(0)
-        .div(255.0);
+      
+      // Use tidy to automatically clean up intermediate tensors
+      inputTensor = tf.tidy(() => {
+        return tf.browser.fromPixels(canvas)
+          .resizeNearestNeighbor([640, 640])
+          .expandDims(0)
+          .div(255.0);
+      });
+      
       console.log(`📐 Input tensor shape: [${inputTensor.shape.join(', ')}]`);
-      console.log(`📊 Input tensor data range: ${inputTensor.min().dataSync()[0].toFixed(3)} - ${inputTensor.max().dataSync()[0].toFixed(3)}`);
       const preprocessTime = performance.now() - preprocessStart;
 
       // 2. Run inference
       const inferenceStart = performance.now();
       console.log('🧠 Running ESP32 model inference...');
-      const predictions = await this.esp32Model!.predict(inputTensor) as tf.Tensor;
+      predictions = await this.esp32Model!.predict(inputTensor) as tf.Tensor;
       const inferenceTime = performance.now() - inferenceStart;
 
       // 3. Process results
       const postprocessStart = performance.now();
       console.log('🔍 Processing ESP32 model output...');
-      // Note: Model was trained on 640x640, so we need to scale to original canvas size
       const detections = this.processYOLOOutput(predictions, canvas.width, canvas.height, 'ESP32');
       const postprocessTime = performance.now() - postprocessStart;
-
-      // Cleanup
-      inputTensor.dispose();
-      predictions.dispose();
 
       const totalTime = performance.now() - startTime;
 
@@ -142,6 +170,11 @@ class MLService {
         console.log(`🔧 Detected ${detections.length} ESP32(s)! Avg confidence: ${(result.confidence * 100).toFixed(1)}%`);
       }
 
+      // Periodic memory cleanup
+      if (this.inferenceCount % 20 === 0) {
+        this.performMemoryCleanup();
+      }
+
       return result;
 
     } catch (error) {
@@ -152,6 +185,15 @@ class MLService {
         processingTime: performance.now() - startTime,
         performance: { preprocessing: 0, inference: 0, postprocessing: 0 }
       };
+    } finally {
+      // Always clean up tensors
+      if (inputTensor) {
+        inputTensor.dispose();
+      }
+      if (predictions) {
+        predictions.dispose();
+      }
+      this.cleanupTempTensors();
     }
   }
 
@@ -183,9 +225,9 @@ class MLService {
     const confThreshold = className === 'ESP32' ? 0.4 : 0.5; // Higher threshold to reduce false positives
     let highConfCount = 0;
     
-    // Sample some confidence values for debugging
+    // Sample some confidence values for debugging (reduced for mobile)
     const sampleConfs = [];
-    for (let i = 0; i < Math.min(50, numBoxes); i += 20) {
+    for (let i = 0; i < Math.min(20, numBoxes); i += 10) {
       sampleConfs.push(data[4 * numBoxes + i].toFixed(3));
     }
     console.log(`   🎯 Sample confidence values: [${sampleConfs.join(', ')}] (threshold: ${confThreshold})`);
@@ -204,7 +246,7 @@ class MLService {
         const rawH = data[3 * numBoxes + i];
         
         // Only log first few detections to avoid spam
-        if (highConfCount <= 3) {
+        if (highConfCount <= 2) { // Reduced logging for mobile
           console.log(`   📍 Detection #${highConfCount}: raw coords: cx=${rawCx.toFixed(3)}, cy=${rawCy.toFixed(3)}, w=${rawW.toFixed(3)}, h=${rawH.toFixed(3)}`);
         }
         
@@ -224,7 +266,7 @@ class MLService {
         const y2 = Math.min(originalHeight, cy + h/2);
         
         // Only log first few high-confidence detections to avoid spam
-        if (highConfCount <= 3) {
+        if (highConfCount <= 2) {
           console.log(`   🔍 High conf detection (${confidence.toFixed(3)}): bbox=[${x1.toFixed(1)}, ${y1.toFixed(1)}, ${x2.toFixed(1)}, ${y2.toFixed(1)}], size=${(x2-x1).toFixed(1)}x${(y2-y1).toFixed(1)}`);
         }
         
@@ -247,8 +289,7 @@ class MLService {
             bbox: [x1, y1, x2, y2],
             score: confidence
           });
-        } else if (highConfCount <= 5) {
-          // Only log first few filtered detections to avoid spam
+        } else if (highConfCount <= 3) { // Reduced logging
           console.log(`   ❌ Filtered out detection: size=${boxWidth.toFixed(1)}x${boxHeight.toFixed(1)}, aspect=${aspectRatio.toFixed(2)}, minSize=${minWidth}x${minHeight}`);
         }
       }
@@ -318,13 +359,85 @@ class MLService {
     return intersectionArea / unionArea;
   }
 
+  // Memory management methods
+  private startMemoryMonitoring(): void {
+    this.memoryCheckInterval = window.setInterval(() => {
+      const memory = tf.memory();
+      const memoryMB = memory.numBytes / (1024 * 1024);
+      
+      if (memoryMB > this.maxMemoryMB) {
+        const now = Date.now();
+        if (now - this.lastMemoryWarning > 5000) { // Only warn every 5 seconds
+          console.warn(`⚠️ High memory usage: ${memoryMB.toFixed(1)}MB (limit: ${this.maxMemoryMB}MB)`);
+          this.lastMemoryWarning = now;
+          this.performMemoryCleanup();
+        }
+      }
+    }, 2000);
+  }
+
+  private checkMemoryHealth(): boolean {
+    const memory = tf.memory();
+    const memoryMB = memory.numBytes / (1024 * 1024);
+    return memoryMB < this.maxMemoryMB;
+  }
+
+  private performMemoryCleanup(): void {
+    try {
+      console.log('🧹 Performing memory cleanup...');
+      
+      // Clean up any tracked temporary tensors
+      this.cleanupTempTensors();
+      
+      // Force garbage collection if available
+      if (window.gc) {
+        window.gc();
+      }
+      
+      // Log memory after cleanup
+      const memory = tf.memory();
+      console.log(`📊 Memory after cleanup: ${(memory.numBytes / (1024 * 1024)).toFixed(1)}MB`);
+      
+    } catch (error) {
+      console.error('❌ Memory cleanup error:', error);
+    }
+  }
+
+  private cleanupTempTensors(): void {
+    this.tempTensors.forEach(tensor => {
+      if (!tensor.isDisposed) {
+        tensor.dispose();
+      }
+    });
+    this.tempTensors = [];
+  }
+
+  // Enhanced performance stats with memory info
   getPerformanceStats() {
+    const memory = tf.memory();
     return {
       isBreadboardModelLoaded: 'Roboflow API', // Using cloud API
       isESP32ModelLoaded: this.esp32Model !== null,
       backend: tf.getBackend(),
-      memory: tf.memory()
+      memory: {
+        numTensors: memory.numTensors,
+        numDataBuffers: memory.numDataBuffers,
+        numBytes: memory.numBytes,
+        memoryMB: (memory.numBytes / (1024 * 1024)).toFixed(1),
+        isHealthy: this.checkMemoryHealth()
+      },
+      inferenceCount: this.inferenceCount
     };
+  }
+
+  // Cleanup method for component unmount
+  cleanup(): void {
+    if (this.memoryCheckInterval) {
+      clearInterval(this.memoryCheckInterval);
+      this.memoryCheckInterval = null;
+    }
+    this.cleanupTempTensors();
+    this.performMemoryCleanup();
   }
 }
 

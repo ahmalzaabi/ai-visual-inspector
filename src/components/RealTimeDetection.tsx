@@ -7,34 +7,56 @@ interface DetectionWithTimestamp extends DetectionResult {
   timestamp: number;
 }
 
+interface PerformanceMetrics {
+  fps: number;
+  inferenceTime: number;
+  memoryUsage: string;
+  isHealthy: boolean;
+}
+
 const RealTimeDetection: React.FC = () => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);
+  const lastInferenceRef = useRef<number>(0);
+  const frameCountRef = useRef<number>(0);
   
   // State
   const [isActive, setIsActive] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [detections, setDetections] = useState<DetectionWithTimestamp[]>([]);
-  const [fps, setFps] = useState(0);
-  const [performanceStats, setPerformanceStats] = useState({ inference: 0, total: 0 });
+  const [perfMetrics, setPerfMetrics] = useState<PerformanceMetrics>({
+    fps: 0,
+    inferenceTime: 0,
+    memoryUsage: '0MB',
+    isHealthy: true
+  });
+  const [detectionMode, setDetectionMode] = useState<'breadboard' | 'esp32'>('breadboard');
 
-  // Start camera
+  // Mobile optimization settings
+  const INFERENCE_THROTTLE_MS = 500; // Run inference every 500ms for mobile
+  const MAX_DETECTIONS_DISPLAY = 10; // Limit displayed detections
+  const CANVAS_MAX_WIDTH = 640; // Limit canvas size for memory
+  const CANVAS_MAX_HEIGHT = 480;
+
+  // Start camera with mobile optimizations
   const startCamera = useCallback(async () => {
     try {
-      console.log('📱 Requesting camera access...');
+      console.log('📱 Requesting camera access with mobile optimization...');
       
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
 
+      // Mobile-optimized camera settings
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 30 }
         }
       });
 
@@ -45,6 +67,30 @@ const RealTimeDetection: React.FC = () => {
         
         videoRef.current.onloadedmetadata = () => {
           console.log('📹 Video metadata loaded');
+          // Adjust canvas size for mobile
+          if (canvasRef.current && overlayCanvasRef.current) {
+            const video = videoRef.current!;
+            const aspectRatio = video.videoWidth / video.videoHeight;
+            
+            let canvasWidth = Math.min(video.videoWidth, CANVAS_MAX_WIDTH);
+            let canvasHeight = Math.min(video.videoHeight, CANVAS_MAX_HEIGHT);
+            
+            // Maintain aspect ratio
+            if (canvasWidth / canvasHeight !== aspectRatio) {
+              if (canvasWidth / aspectRatio <= CANVAS_MAX_HEIGHT) {
+                canvasHeight = canvasWidth / aspectRatio;
+              } else {
+                canvasWidth = canvasHeight * aspectRatio;
+              }
+            }
+            
+            canvasRef.current.width = canvasWidth;
+            canvasRef.current.height = canvasHeight;
+            overlayCanvasRef.current.width = canvasWidth;
+            overlayCanvasRef.current.height = canvasHeight;
+            
+            console.log(`📐 Canvas optimized for mobile: ${canvasWidth}x${canvasHeight}`);
+          }
         };
         
         videoRef.current.oncanplay = () => {
@@ -60,7 +106,7 @@ const RealTimeDetection: React.FC = () => {
     }
   }, [stream]);
 
-  // Stop camera
+  // Stop camera and cleanup
   const stopCamera = useCallback(() => {
     setIsActive(false);
     if (animationFrameRef.current) {
@@ -74,50 +120,92 @@ const RealTimeDetection: React.FC = () => {
       videoRef.current.srcObject = null;
     }
     setDetections([]);
+    
+    // Cleanup ML service
+    mlService.cleanup();
+    
+    console.log('📱 Camera stopped and resources cleaned up');
   }, [stream]);
 
-  // Real-time detection loop
+  // Throttled real-time detection loop optimized for mobile
   const startRealTimeDetection = useCallback(() => {
+    let lastFpsUpdate = performance.now();
+    let frameCount = 0;
+
     const detectFrame = async () => {
       if (!isActive || !videoRef.current || !canvasRef.current || !overlayCanvasRef.current) {
         return;
       }
 
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const overlayCanvas = overlayCanvasRef.current;
-      const context = canvas.getContext('2d');
-      const overlayContext = overlayCanvas.getContext('2d');
+      const now = performance.now();
+      frameCount++;
+      frameCountRef.current++;
 
-      if (context && overlayContext) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        overlayCanvas.width = video.videoWidth;
-        overlayCanvas.height = video.videoHeight;
-        
-        context.drawImage(video, 0, 0);
+              // Update FPS every second
+        if (now - lastFpsUpdate >= 1000) {
+          const currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+          setPerfMetrics(prev => ({ ...prev, fps: currentFps }));
+          frameCount = 0;
+          lastFpsUpdate = now;
+        }
 
-        try {
-          const startTime = performance.now();
-          const result = await mlService.detectBreadboard(canvas);
-          const endTime = performance.now();
-          const inferenceTime = endTime - startTime;
+      // Throttle inference for mobile performance
+      const shouldRunInference = (now - lastInferenceRef.current) >= INFERENCE_THROTTLE_MS;
 
-          const detectionsWithTimestamp = result.detections.map(det => ({
-            ...det,
-            timestamp: Date.now()
-          }));
+      if (shouldRunInference) {
+        lastInferenceRef.current = now;
 
-          setDetections(detectionsWithTimestamp);
-          setPerformanceStats({ 
-            inference: inferenceTime, 
-            total: result.processingTime 
-          });
-          
-          drawDetectionOverlay(overlayContext, result.detections, canvas.width, canvas.height);
-          setFps(Math.round(1000 / inferenceTime));
-        } catch (error) {
-          console.error('Detection error:', error);
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const overlayCanvas = overlayCanvasRef.current;
+        const context = canvas.getContext('2d');
+        const overlayContext = overlayCanvas.getContext('2d');
+
+        if (context && overlayContext) {
+          // Draw video frame to canvas
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          try {
+            const startTime = performance.now();
+            
+            // Run detection based on selected mode
+            const result = detectionMode === 'breadboard' 
+              ? await mlService.detectBreadboard(canvas)
+              : await mlService.detectESP32(canvas);
+            
+            const endTime = performance.now();
+            const inferenceTime = endTime - startTime;
+
+            // Limit number of detections for performance
+            const limitedDetections = result.detections.slice(0, MAX_DETECTIONS_DISPLAY);
+            
+            const detectionsWithTimestamp = limitedDetections.map(det => ({
+              ...det,
+              timestamp: Date.now()
+            }));
+
+            setDetections(detectionsWithTimestamp);
+            
+            // Update performance metrics
+            const perfStats = mlService.getPerformanceStats();
+            setPerfMetrics(prev => ({
+              ...prev,
+              inferenceTime: Math.round(inferenceTime),
+              memoryUsage: perfStats.memory.memoryMB + 'MB',
+              isHealthy: perfStats.memory.isHealthy
+            }));
+            
+            drawDetectionOverlay(overlayContext, limitedDetections, canvas.width, canvas.height);
+            
+            // Log performance for debugging
+            if (frameCountRef.current % 20 === 0) {
+              console.log(`📊 Performance: ${Math.round(1000/inferenceTime)}fps inference, ${perfStats.memory.memoryMB}MB memory`);
+            }
+            
+          } catch (error) {
+            console.error('❌ Detection error:', error);
+            setPerfMetrics(prev => ({ ...prev, isHealthy: false }));
+          }
         }
       }
 
@@ -125,9 +213,9 @@ const RealTimeDetection: React.FC = () => {
     };
 
     detectFrame();
-  }, [isActive]);
+  }, [isActive, detectionMode]);
 
-  // Draw detection overlay
+  // Optimized detection overlay drawing
   const drawDetectionOverlay = (
     context: CanvasRenderingContext2D,
     detections: DetectionResult[],
@@ -137,44 +225,57 @@ const RealTimeDetection: React.FC = () => {
     // Clear overlay
     context.clearRect(0, 0, width, height);
     
-    detections.forEach((detection) => {
+    detections.forEach((detection, index) => {
       const [x1, y1, x2, y2] = detection.bbox;
       
-      // Simple color and icon mapping for breadboard detection
-      const color = '#00d4ff';
-      const icon = '🔌';
+      // Color coding for different detection types
+      const colors = {
+        'Breadboard': '#00d4ff',
+        'ESP32': '#ff6b35',
+        'breadboard': '#00d4ff',
+        'esp32': '#ff6b35'
+      };
+      
+      const icons = {
+        'Breadboard': '🔌',
+        'ESP32': '🔧',
+        'breadboard': '🔌',
+        'esp32': '🔧'
+      };
+      
+      const color = colors[detection.class as keyof typeof colors] || '#00d4ff';
+      const icon = icons[detection.class as keyof typeof icons] || '🔍';
       
       // Draw bounding box
       context.strokeStyle = color;
-      context.lineWidth = 3;
+      context.lineWidth = 2;
       context.strokeRect(x1, y1, x2 - x1, y2 - y1);
       
-      // Draw filled background for label
-      const labelText = `${icon} ${detection.class} ${(detection.confidence * 100).toFixed(0)}%`;
-      context.font = 'bold 16px Arial';
+      // Draw confidence badge (simplified for mobile)
+      const confidence = Math.round(detection.confidence * 100);
+      const labelText = `${icon} ${confidence}%`;
+      
+      context.font = 'bold 14px Arial';
       const textMetrics = context.measureText(labelText);
-      const labelWidth = textMetrics.width + 16;
-      const labelHeight = 28;
+      const labelWidth = textMetrics.width + 12;
+      const labelHeight = 22;
       
       // Draw label background
       context.fillStyle = color;
       context.fillRect(x1, y1 - labelHeight, labelWidth, labelHeight);
       
       // Draw label text
-      context.fillStyle = '#000000';
-      context.fillText(labelText, x1 + 8, y1 - 8);
+      context.fillStyle = '#ffffff';
+      context.fillText(labelText, x1 + 6, y1 - 6);
       
-      // Draw confidence arc
-      const centerX = (x1 + x2) / 2;
-      const centerY = (y1 + y2) / 2;
-      const radius = 30;
-      const confidenceAngle = (detection.confidence * 2 * Math.PI) - Math.PI / 2;
-      
-      context.beginPath();
-      context.arc(centerX, centerY, radius, -Math.PI / 2, confidenceAngle, false);
-      context.strokeStyle = color;
-      context.lineWidth = 4;
-      context.stroke();
+      // Draw detection number for multiple objects
+      if (detections.length > 1) {
+        context.fillStyle = color;
+        context.fillRect(x2 - 25, y1, 25, 25);
+        context.fillStyle = '#ffffff';
+        context.font = 'bold 12px Arial';
+        context.fillText((index + 1).toString(), x2 - 18, y1 + 16);
+      }
     });
   };
 
@@ -185,117 +286,135 @@ const RealTimeDetection: React.FC = () => {
     };
   }, [stopCamera]);
 
+  // Performance monitoring effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stats = mlService.getPerformanceStats();
+      if (!perfMetrics.isHealthy && stats.memory.isHealthy) {
+        setPerfMetrics(prev => ({ ...prev, isHealthy: true }));
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [perfMetrics.isHealthy]);
+
   return (
     <div className="realtime-detection">
       <div className="detection-header">
-        <h2>🔌 Real-time Breadboard Detection</h2>
-        <p>AI-powered breadboard detection using your trained model</p>
+        <h2>📱 Mobile Real-time Detection</h2>
+        <p>Optimized for iPhone PWA performance</p>
+        
+        {/* Mode Selection */}
+        <div className="detection-mode-selector">
+          <button 
+            className={`btn ${detectionMode === 'breadboard' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setDetectionMode('breadboard')}
+            disabled={isActive}
+          >
+            🔌 Breadboard (API)
+          </button>
+          <button 
+            className={`btn ${detectionMode === 'esp32' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setDetectionMode('esp32')}
+            disabled={isActive}
+          >
+            🔧 ESP32 (Local)
+          </button>
+        </div>
+        
         <div className="detection-controls">
           <button 
             className={`btn ${isActive ? 'btn-danger' : 'btn-primary'}`}
             onClick={isActive ? stopCamera : startCamera}
           >
-            {isActive ? '⏹️ Stop Detection' : '▶️ Start Breadboard Detection'}
+            {isActive ? '⏹️ Stop Detection' : `▶️ Start ${detectionMode.toUpperCase()} Detection`}
           </button>
         </div>
       </div>
 
-      {/* Main Camera View */}
-      <div className="camera-container">
-        <div className="video-wrapper">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="camera-feed"
-          />
-          
-          <canvas
-            ref={overlayCanvasRef}
-            className="detection-overlay"
-          />
-          
-          <canvas
-            ref={canvasRef}
-            style={{ display: 'none' }}
-          />
-        </div>
-        
-        {/* Performance HUD */}
-        <div className="performance-hud">
-          <div className="hud-item">
-            <span className="hud-label">FPS:</span>
-            <span className="hud-value">{fps}</span>
-          </div>
-          <div className="hud-item">
-            <span className="hud-label">Inference:</span>
-            <span className="hud-value">{performanceStats.inference.toFixed(1)}ms</span>
-          </div>
-          <div className="hud-item">
-            <span className="hud-label">Total:</span>
-            <span className="hud-value">{performanceStats.total.toFixed(1)}ms</span>
-          </div>
-          <div className="hud-item">
-            <span className="hud-label">Objects:</span>
-            <span className="hud-value">{detections.length}</span>
-          </div>
+      {/* Performance HUD */}
+      <div className="performance-hud">
+        <div className={`performance-indicator ${perfMetrics.isHealthy ? 'healthy' : 'warning'}`}>
+          <span>📊 {perfMetrics.fps}fps</span>
+          <span>⚡ {perfMetrics.inferenceTime}ms</span>
+          <span>💾 {perfMetrics.memoryUsage}</span>
+          <span className={`health-status ${perfMetrics.isHealthy ? 'healthy' : 'warning'}`}>
+            {perfMetrics.isHealthy ? '✅' : '⚠️'}
+          </span>
         </div>
       </div>
 
-      {/* Side Panel */}
-      <div className="detection-panel">
-        <div className="live-detections">
-          <h3>🔌 Live Breadboard Detections</h3>
-          <div className="detection-list">
-            {detections.length > 0 ? (
-              detections.map((detection, index) => (
-                <div key={index} className="detection-item">
-                  <span className="detection-class">🔌 {detection.class}</span>
-                  <span className="detection-confidence">
-                    {(detection.confidence * 100).toFixed(1)}%
-                  </span>
-                  <span className="detection-bbox">
-                    [{detection.bbox.map(b => b.toFixed(0)).join(', ')}]
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="no-detections">
-                🔌 Point camera at a breadboard to detect
-              </div>
-            )}
+      {/* Detection Count */}
+      {detections.length > 0 && (
+        <div className="detection-summary">
+          <div className="detection-count">
+            Found: <strong>{detections.length}</strong> {detectionMode}(s)
           </div>
         </div>
+      )}
 
-        <div className="statistics-panel">
-          <h3>📊 Detection Statistics</h3>
-          <div className="stats-grid">
-            <div className="stat-item">
-              <span className="stat-label">Total Detected:</span>
-              <span className="stat-value">{detections.length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Average Confidence:</span>
-              <span className="stat-value">
-                {detections.length > 0 ? 
-                  ((detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length) * 100).toFixed(1) + '%' : 
-                  '0%'
-                }
-              </span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Current FPS:</span>
-              <span className="stat-value">{fps}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Model Status:</span>
-              <span className="stat-value">
-                {mlService.getPerformanceStats().isBreadboardModelLoaded && mlService.getPerformanceStats().isESP32ModelLoaded ? '✅ Loaded' : '❌ Error'}
-              </span>
-            </div>
-          </div>
+      {/* Camera Feed */}
+      <div className="camera-container">
+        <div className="video-wrapper">
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            muted
+            style={{ 
+              width: '100%', 
+              height: 'auto',
+              maxWidth: `${CANVAS_MAX_WIDTH}px`,
+              maxHeight: `${CANVAS_MAX_HEIGHT}px`
+            }}
+          />
+          <canvas 
+            ref={canvasRef} 
+            style={{ display: 'none' }}
+          />
+          <canvas 
+            ref={overlayCanvasRef}
+            className="detection-overlay" 
+            style={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none'
+            }}
+          />
         </div>
+      </div>
+
+      {/* Detection List for Mobile */}
+      {detections.length > 0 && (
+        <div className="detection-list-mobile">
+          <h3>Detected Objects:</h3>
+          {detections.slice(0, 5).map((detection, index) => (
+            <div key={index} className="detection-item">
+              <span className="detection-icon">
+                {detection.class.toLowerCase().includes('breadboard') ? '🔌' : '🔧'}
+              </span>
+              <span className="detection-info">
+                {detection.class} - {Math.round(detection.confidence * 100)}%
+              </span>
+            </div>
+          ))}
+          {detections.length > 5 && (
+            <div className="detection-more">
+              +{detections.length - 5} more objects detected
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mobile Optimization Info */}
+      <div className="mobile-info">
+        <small>
+          🚀 Optimized for mobile: {INFERENCE_THROTTLE_MS}ms throttle, 
+          {CANVAS_MAX_WIDTH}x{CANVAS_MAX_HEIGHT} max resolution
+        </small>
       </div>
     </div>
   );

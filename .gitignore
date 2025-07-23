@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+venv/
+# Large model files and training artifacts
+*.pt
+*.onnx
+*.pb
+*.tflite
+model_breadboard/
+yolov8_training/
+calibration_image_sample_data_*.npy
+dataset.yaml
+yolov8n.pt
+check_training.py
