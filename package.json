@@ -12,7 +12,6 @@
     "build:analyze": "npm run build && npm run analyze"
   },
   "dependencies": {
-    "@tensorflow-models/coco-ssd": "^2.2.2",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "axios": "^1.11.0",

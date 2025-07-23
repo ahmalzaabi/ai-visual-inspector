@@ -1,13 +1,24 @@
 {
   "name": "AI Visual Inspector",
   "short_name": "AI Inspector",
-  "description": "AI-powered visual inspection application with real-time breadboard detection",
+  "description": "AI-powered visual inspection platform with ESP32 assembly detection and deep inspection analysis. Optimized for iOS Safari PWA.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "theme_color": "#10b981",
   "orientation": "portrait-primary",
   "scope": "/",
+  "lang": "en",
+  "dir": "auto",
+  "categories": ["productivity", "utilities", "business"],
+  "screenshots": [
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "AI Visual Inspector main interface"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -16,7 +27,7 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.png", 
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -25,10 +36,47 @@
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "apple touch icon"
     }
   ],
-  "categories": ["productivity", "utilities", "developer"],
-  "lang": "en-US",
-  "dir": "ltr"
+  "shortcuts": [
+    {
+      "name": "Assembly Verification",
+      "short_name": "Assembly",
+      "description": "Start ESP32 assembly detection",
+      "url": "/?feature=assembly",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Deep Inspection",
+      "short_name": "Inspection",
+      "description": "Start quality defect analysis",
+      "url": "/?feature=inspection",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "id": "ai-visual-inspector",
+  "protocol_handlers": [],
+  "file_handlers": []
 } 

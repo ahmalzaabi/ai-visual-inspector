@@ -114,7 +114,7 @@ const RealTimeDetection: React.FC = () => {
     setDetections([]);
     
     // Cleanup ML service
-    mlService.cleanup();
+    mlService.dispose();
   }, [stream]);
 
   // Throttled real-time detection loop optimized for mobile
