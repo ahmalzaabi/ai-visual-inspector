@@ -48,7 +48,6 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showCompletion, setShowCompletion] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // ESP32 real-time detection state
   const [isESP32RealtimeActive, setIsESP32RealtimeActive] = useState(false)
