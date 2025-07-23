@@ -139,12 +139,7 @@ function App() {
       title: t('features.quality'),
       description: t('descriptions.quality')
     },
-    {
-      id: 'test',
-      icon: <InspectionIcon />,
-      title: t('features.test'),
-      description: t('descriptions.test')
-    }
+
   ]
 
 
@@ -528,10 +523,7 @@ function App() {
     );
   };
 
-  const detectThumbsUp = useCallback(() => {
-    setShowCompletion(true)
-    setTimeout(() => setShowCompletion(false), 2000)
-  }, [])
+
 
   // Start real-time detection when activated
   useEffect(() => {
@@ -855,12 +847,7 @@ function App() {
                     </button>
                   )}
                   
-                  <button 
-                    className="btn btn-success" 
-                    onClick={detectThumbsUp}
-                  >
-                    👍 {t('actions.test')}
-                  </button>
+
                   <button 
                     className="btn btn-secondary" 
                     onClick={stopCamera}
