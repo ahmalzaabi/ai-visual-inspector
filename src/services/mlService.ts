@@ -1,26 +1,13 @@
-// Multi-Model ML Service for Breadboard and ESP32 Detection
-// Using Roboflow API for breadboard detection and TensorFlow.js for ESP32
-// Mobile-optimized with memory management
+// ESP32 Detection Service - Mobile Optimized
+// TensorFlow.js with memory management for iPhone PWA
 
 import * as tf from '@tensorflow/tfjs';
-import { roboflowService } from './roboflowService';
 
 export interface DetectionResult {
   class: string;
   confidence: number;
   bbox: [number, number, number, number]; // [x1, y1, x2, y2]
   score: number;
-}
-
-export interface BreadboardAnalysis {
-  detections: DetectionResult[];
-  confidence: number;
-  processingTime: number;
-  performance: {
-    preprocessing: number;
-    inference: number;
-    postprocessing: number;
-  };
 }
 
 export interface ESP32Analysis {
@@ -46,65 +33,46 @@ class MLService {
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log('🚀 Loading ESP32 model and initializing Roboflow...');
+    console.log('🚀 Loading ESP32 model...');
     
     try {
       // Setup TensorFlow.js with mobile optimizations
-      console.log('📊 TensorFlow.js setup...');
       await tf.ready();
-      console.log('🔧 Setting backend to WebGL...');
       await tf.setBackend('webgl');
       
       // Configure for mobile performance
       tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
       tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
       
-      console.log('✅ Backend:', tf.getBackend());
-      
-      // Load only ESP32 model (breadboard uses Roboflow API)
+      // Load ESP32 model
       console.log('📦 Loading ESP32 model from /models/esp32/model.json...');
       this.esp32Model = await tf.loadGraphModel('/models/esp32/model.json');
       
-      console.log('🔍 Testing ESP32 model with dummy input...');
+      // Test model with dummy input
+      console.log('🔍 Testing ESP32 model...');
       const testInput = tf.zeros([1, 640, 640, 3]);
       const esp32Output = await this.esp32Model.predict(testInput) as tf.Tensor;
       
       console.log('✅ ESP32 model loaded! Output shape:', esp32Output.shape);
-      console.log('🔢 ESP32 output data preview:', esp32Output.dataSync().slice(0, 10));
       
       // Clean up test tensors
       testInput.dispose();
       esp32Output.dispose();
       
-      // Check Roboflow API health
-      console.log('🌐 Checking Roboflow API health...');
-      const roboflowHealthy = await roboflowService.checkHealth();
-      console.log(`🔍 Roboflow API status: ${roboflowHealthy ? '✅ Healthy' : '❌ Unavailable'}`);
-      
       // Start memory monitoring
       this.startMemoryMonitoring();
       
       this.isInitialized = true;
-      console.log('🎯 Ready for ESP32 detection (local) and breadboard detection (Roboflow API)!');
+      console.log('🎯 Ready for ESP32 detection!');
       
     } catch (error) {
       console.error('❌ Model loading failed:', error);
-      console.error('Error details:', error);
       throw error;
     }
   }
 
-  async detectBreadboard(canvas: HTMLCanvasElement): Promise<BreadboardAnalysis> {
-    console.log('🍞 Starting breadboard detection with Roboflow API...');
-    
-    // Use Roboflow API for better accuracy and no memory issues
-    return await roboflowService.detectBreadboard(canvas);
-  }
-
   async detectESP32(canvas: HTMLCanvasElement): Promise<ESP32Analysis> {
-    console.log('🔧 Starting ESP32 detection...');
     if (!this.isInitialized || !this.esp32Model) {
-      console.log('🔄 Model not initialized, initializing...');
       await this.initialize();
     }
 
@@ -128,7 +96,6 @@ class MLService {
     try {
       // 1. Preprocess image with memory management
       const preprocessStart = performance.now();
-      console.log('🔄 Preprocessing ESP32 image...');
       
       // Use tidy to automatically clean up intermediate tensors
       inputTensor = tf.tidy(() => {
@@ -138,19 +105,16 @@ class MLService {
           .div(255.0);
       });
       
-      console.log(`📐 Input tensor shape: [${inputTensor.shape.join(', ')}]`);
       const preprocessTime = performance.now() - preprocessStart;
 
       // 2. Run inference
       const inferenceStart = performance.now();
-      console.log('🧠 Running ESP32 model inference...');
       predictions = await this.esp32Model!.predict(inputTensor) as tf.Tensor;
       const inferenceTime = performance.now() - inferenceStart;
 
       // 3. Process results
       const postprocessStart = performance.now();
-      console.log('🔍 Processing ESP32 model output...');
-      const detections = this.processYOLOOutput(predictions, canvas.width, canvas.height, 'ESP32');
+      const detections = this.processYOLOOutput(predictions, canvas.width, canvas.height);
       const postprocessTime = performance.now() - postprocessStart;
 
       const totalTime = performance.now() - startTime;
@@ -165,10 +129,6 @@ class MLService {
           postprocessing: postprocessTime
         }
       };
-
-      if (detections.length > 0) {
-        console.log(`🔧 Detected ${detections.length} ESP32(s)! Avg confidence: ${(result.confidence * 100).toFixed(1)}%`);
-      }
 
       // Periodic memory cleanup
       if (this.inferenceCount % 20 === 0) {
@@ -197,16 +157,12 @@ class MLService {
     }
   }
 
-  private processYOLOOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number, className: string): DetectionResult[] {
+  private processYOLOOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number): DetectionResult[] {
     const data = predictions.dataSync() as Float32Array;
     const detections: DetectionResult[] = [];
     
     // YOLOv8 output format: [batch, features, anchors] -> [1, 5, 8400]
     const shape = predictions.shape;
-    console.log(`🔍 Processing YOLO output for ${className}:`);
-    console.log(`   📏 Shape: [${shape.join(', ')}]`);
-    console.log(`   📊 Data length: ${data.length}`);
-    console.log(`   🖼️  Original size: ${originalWidth}x${originalHeight}`);
     
     // Handle different output formats
     let numBoxes: number;
@@ -219,36 +175,18 @@ class MLService {
       return [];
     }
 
-    console.log(`   📦 Number of boxes to process: ${numBoxes}`);
-
-    // Different thresholds for different models based on their performance
-    const confThreshold = className === 'ESP32' ? 0.4 : 0.5; // Higher threshold to reduce false positives
-    let highConfCount = 0;
-    
-    // Sample some confidence values for debugging (reduced for mobile)
-    const sampleConfs = [];
-    for (let i = 0; i < Math.min(20, numBoxes); i += 10) {
-      sampleConfs.push(data[4 * numBoxes + i].toFixed(3));
-    }
-    console.log(`   🎯 Sample confidence values: [${sampleConfs.join(', ')}] (threshold: ${confThreshold})`);
+    const confThreshold = 0.4; // Confidence threshold for ESP32
     
     for (let i = 0; i < numBoxes; i++) {
       // YOLOv8 format: [cx, cy, w, h, confidence]
       const confidence = data[4 * numBoxes + i];
       
       if (confidence > confThreshold) {
-        highConfCount++;
-        
         // Raw coordinate values
         const rawCx = data[0 * numBoxes + i];
         const rawCy = data[1 * numBoxes + i];
         const rawW = data[2 * numBoxes + i];
         const rawH = data[3 * numBoxes + i];
-        
-        // Only log first few detections to avoid spam
-        if (highConfCount <= 2) { // Reduced logging for mobile
-          console.log(`   📍 Detection #${highConfCount}: raw coords: cx=${rawCx.toFixed(3)}, cy=${rawCy.toFixed(3)}, w=${rawW.toFixed(3)}, h=${rawH.toFixed(3)}`);
-        }
         
         // Scale from model size (640x640) to original canvas size
         const scaleX = originalWidth / 640;
@@ -265,51 +203,34 @@ class MLService {
         const x2 = Math.min(originalWidth, cx + w/2);
         const y2 = Math.min(originalHeight, cy + h/2);
         
-        // Only log first few high-confidence detections to avoid spam
-        if (highConfCount <= 2) {
-          console.log(`   🔍 High conf detection (${confidence.toFixed(3)}): bbox=[${x1.toFixed(1)}, ${y1.toFixed(1)}, ${x2.toFixed(1)}, ${y2.toFixed(1)}], size=${(x2-x1).toFixed(1)}x${(y2-y1).toFixed(1)}`);
-        }
-        
-        // More aggressive filtering for minimum detection size
-        const minWidth = className === 'ESP32' ? 30 : 50;  // ESP32s can be smaller
-        const minHeight = className === 'ESP32' ? 30 : 50; // Breadboards are usually larger
+        // Size filtering for ESP32
+        const minWidth = 30;
+        const minHeight = 30;
         const boxWidth = x2 - x1;
         const boxHeight = y2 - y1;
         
-        // Also filter based on aspect ratio to reduce false positives
+        // Aspect ratio filtering for ESP32 (can be square-ish to rectangular)
         const aspectRatio = boxWidth / boxHeight;
-        const isValidAspectRatio = className === 'ESP32' ? 
-          (aspectRatio > 0.3 && aspectRatio < 3.0) :  // ESP32s can be square-ish to rectangular
-          (aspectRatio > 0.8 && aspectRatio < 5.0);   // Breadboards are typically rectangular
+        const isValidAspectRatio = aspectRatio > 0.3 && aspectRatio < 3.0;
         
         if (boxWidth > minWidth && boxHeight > minHeight && isValidAspectRatio) {
           detections.push({
-            class: className,
+            class: 'ESP32',
             confidence: confidence,
             bbox: [x1, y1, x2, y2],
             score: confidence
           });
-        } else if (highConfCount <= 3) { // Reduced logging
-          console.log(`   ❌ Filtered out detection: size=${boxWidth.toFixed(1)}x${boxHeight.toFixed(1)}, aspect=${aspectRatio.toFixed(2)}, minSize=${minWidth}x${minHeight}`);
         }
       }
     }
     
-    console.log(`   ⚡ High confidence detections (>${confThreshold}): ${highConfCount}`);
-    console.log(`   ✅ Valid detections after size filter: ${detections.length}`);
-    
-    // More aggressive NMS for different object types
-    const nmsThreshold = className === 'ESP32' ? 0.3 : 0.4; // ESP32s should have less overlap tolerance
+    // Apply Non-Maximum Suppression
+    const nmsThreshold = 0.3;
     const nmsResults = this.applyNMS(detections, nmsThreshold);
-    console.log(`   🎯 Final detections after NMS (threshold=${nmsThreshold}): ${nmsResults.length}`);
     
-    // Final confidence-based filtering - only keep the most confident detections
-    const finalResults = nmsResults.filter(detection => {
-      const minFinalConf = className === 'ESP32' ? 0.45 : 0.55;
-      return detection.confidence >= minFinalConf;
-    });
+    // Final confidence filtering
+    const finalResults = nmsResults.filter(detection => detection.confidence >= 0.45);
     
-    console.log(`   ✅ High-confidence final results: ${finalResults.length}`);
     return finalResults;
   }
 
@@ -384,8 +305,6 @@ class MLService {
 
   private performMemoryCleanup(): void {
     try {
-      console.log('🧹 Performing memory cleanup...');
-      
       // Clean up any tracked temporary tensors
       this.cleanupTempTensors();
       
@@ -393,10 +312,6 @@ class MLService {
       if (window.gc) {
         window.gc();
       }
-      
-      // Log memory after cleanup
-      const memory = tf.memory();
-      console.log(`📊 Memory after cleanup: ${(memory.numBytes / (1024 * 1024)).toFixed(1)}MB`);
       
     } catch (error) {
       console.error('❌ Memory cleanup error:', error);
@@ -412,11 +327,10 @@ class MLService {
     this.tempTensors = [];
   }
 
-  // Enhanced performance stats with memory info
+  // Performance stats
   getPerformanceStats() {
     const memory = tf.memory();
     return {
-      isBreadboardModelLoaded: 'Roboflow API', // Using cloud API
       isESP32ModelLoaded: this.esp32Model !== null,
       backend: tf.getBackend(),
       memory: {

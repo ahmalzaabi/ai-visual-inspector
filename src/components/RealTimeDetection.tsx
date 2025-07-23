@@ -33,7 +33,6 @@ const RealTimeDetection: React.FC = () => {
     memoryUsage: '0MB',
     isHealthy: true
   });
-  const [detectionMode, setDetectionMode] = useState<'breadboard' | 'esp32'>('breadboard');
 
   // Mobile optimization settings
   const INFERENCE_THROTTLE_MS = 500; // Run inference every 500ms for mobile
@@ -44,8 +43,6 @@ const RealTimeDetection: React.FC = () => {
   // Start camera with mobile optimizations
   const startCamera = useCallback(async () => {
     try {
-      console.log('📱 Requesting camera access with mobile optimization...');
-      
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
@@ -66,7 +63,6 @@ const RealTimeDetection: React.FC = () => {
         videoRef.current.srcObject = mediaStream;
         
         videoRef.current.onloadedmetadata = () => {
-          console.log('📹 Video metadata loaded');
           // Adjust canvas size for mobile
           if (canvasRef.current && overlayCanvasRef.current) {
             const video = videoRef.current!;
@@ -88,19 +84,15 @@ const RealTimeDetection: React.FC = () => {
             canvasRef.current.height = canvasHeight;
             overlayCanvasRef.current.width = canvasWidth;
             overlayCanvasRef.current.height = canvasHeight;
-            
-            console.log(`📐 Canvas optimized for mobile: ${canvasWidth}x${canvasHeight}`);
           }
         };
         
         videoRef.current.oncanplay = () => {
-          console.log('📹 Video ready to play');
           setIsActive(true);
           startRealTimeDetection();
         };
       }
 
-      console.log('✅ Camera started successfully');
     } catch (error) {
       console.error('❌ Camera error:', error);
     }
@@ -123,8 +115,6 @@ const RealTimeDetection: React.FC = () => {
     
     // Cleanup ML service
     mlService.cleanup();
-    
-    console.log('📱 Camera stopped and resources cleaned up');
   }, [stream]);
 
   // Throttled real-time detection loop optimized for mobile
@@ -141,13 +131,13 @@ const RealTimeDetection: React.FC = () => {
       frameCount++;
       frameCountRef.current++;
 
-              // Update FPS every second
-        if (now - lastFpsUpdate >= 1000) {
-          const currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
-          setPerfMetrics(prev => ({ ...prev, fps: currentFps }));
-          frameCount = 0;
-          lastFpsUpdate = now;
-        }
+      // Update FPS every second
+      if (now - lastFpsUpdate >= 1000) {
+        const currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+        setPerfMetrics(prev => ({ ...prev, fps: currentFps }));
+        frameCount = 0;
+        lastFpsUpdate = now;
+      }
 
       // Throttle inference for mobile performance
       const shouldRunInference = (now - lastInferenceRef.current) >= INFERENCE_THROTTLE_MS;
@@ -168,10 +158,8 @@ const RealTimeDetection: React.FC = () => {
           try {
             const startTime = performance.now();
             
-            // Run detection based on selected mode
-            const result = detectionMode === 'breadboard' 
-              ? await mlService.detectBreadboard(canvas)
-              : await mlService.detectESP32(canvas);
+            // Run ESP32 detection
+            const result = await mlService.detectESP32(canvas);
             
             const endTime = performance.now();
             const inferenceTime = endTime - startTime;
@@ -197,11 +185,6 @@ const RealTimeDetection: React.FC = () => {
             
             drawDetectionOverlay(overlayContext, limitedDetections, canvas.width, canvas.height);
             
-            // Log performance for debugging
-            if (frameCountRef.current % 20 === 0) {
-              console.log(`📊 Performance: ${Math.round(1000/inferenceTime)}fps inference, ${perfStats.memory.memoryMB}MB memory`);
-            }
-            
           } catch (error) {
             console.error('❌ Detection error:', error);
             setPerfMetrics(prev => ({ ...prev, isHealthy: false }));
@@ -213,7 +196,7 @@ const RealTimeDetection: React.FC = () => {
     };
 
     detectFrame();
-  }, [isActive, detectionMode]);
+  }, [isActive]);
 
   // Optimized detection overlay drawing
   const drawDetectionOverlay = (
@@ -228,32 +211,18 @@ const RealTimeDetection: React.FC = () => {
     detections.forEach((detection, index) => {
       const [x1, y1, x2, y2] = detection.bbox;
       
-      // Color coding for different detection types
-      const colors = {
-        'Breadboard': '#00d4ff',
-        'ESP32': '#ff6b35',
-        'breadboard': '#00d4ff',
-        'esp32': '#ff6b35'
-      };
-      
-      const icons = {
-        'Breadboard': '🔌',
-        'ESP32': '🔧',
-        'breadboard': '🔌',
-        'esp32': '🔧'
-      };
-      
-      const color = colors[detection.class as keyof typeof colors] || '#00d4ff';
-      const icon = icons[detection.class as keyof typeof icons] || '🔍';
+      // ESP32 styling
+      const color = '#ff6b35';
+      const icon = '🔧';
       
       // Draw bounding box
       context.strokeStyle = color;
       context.lineWidth = 2;
       context.strokeRect(x1, y1, x2 - x1, y2 - y1);
       
-      // Draw confidence badge (simplified for mobile)
+      // Draw confidence badge
       const confidence = Math.round(detection.confidence * 100);
-      const labelText = `${icon} ${confidence}%`;
+      const labelText = `${icon} ESP32 ${confidence}%`;
       
       context.font = 'bold 14px Arial';
       const textMetrics = context.measureText(labelText);
@@ -301,33 +270,15 @@ const RealTimeDetection: React.FC = () => {
   return (
     <div className="realtime-detection">
       <div className="detection-header">
-        <h2>📱 Mobile Real-time Detection</h2>
+        <h2>🔧 ESP32 Real-time Detection</h2>
         <p>Optimized for iPhone PWA performance</p>
-        
-        {/* Mode Selection */}
-        <div className="detection-mode-selector">
-          <button 
-            className={`btn ${detectionMode === 'breadboard' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setDetectionMode('breadboard')}
-            disabled={isActive}
-          >
-            🔌 Breadboard (API)
-          </button>
-          <button 
-            className={`btn ${detectionMode === 'esp32' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setDetectionMode('esp32')}
-            disabled={isActive}
-          >
-            🔧 ESP32 (Local)
-          </button>
-        </div>
         
         <div className="detection-controls">
           <button 
             className={`btn ${isActive ? 'btn-danger' : 'btn-primary'}`}
             onClick={isActive ? stopCamera : startCamera}
           >
-            {isActive ? '⏹️ Stop Detection' : `▶️ Start ${detectionMode.toUpperCase()} Detection`}
+            {isActive ? '⏹️ Stop Detection' : '▶️ Start ESP32 Detection'}
           </button>
         </div>
       </div>
@@ -348,7 +299,7 @@ const RealTimeDetection: React.FC = () => {
       {detections.length > 0 && (
         <div className="detection-summary">
           <div className="detection-count">
-            Found: <strong>{detections.length}</strong> {detectionMode}(s)
+            Found: <strong>{detections.length}</strong> ESP32 board(s)
           </div>
         </div>
       )}
@@ -390,20 +341,18 @@ const RealTimeDetection: React.FC = () => {
       {/* Detection List for Mobile */}
       {detections.length > 0 && (
         <div className="detection-list-mobile">
-          <h3>Detected Objects:</h3>
+          <h3>Detected ESP32 Boards:</h3>
           {detections.slice(0, 5).map((detection, index) => (
             <div key={index} className="detection-item">
-              <span className="detection-icon">
-                {detection.class.toLowerCase().includes('breadboard') ? '🔌' : '🔧'}
-              </span>
+              <span className="detection-icon">🔧</span>
               <span className="detection-info">
-                {detection.class} - {Math.round(detection.confidence * 100)}%
+                ESP32 - {Math.round(detection.confidence * 100)}%
               </span>
             </div>
           ))}
           {detections.length > 5 && (
             <div className="detection-more">
-              +{detections.length - 5} more objects detected
+              +{detections.length - 5} more ESP32 boards detected
             </div>
           )}
         </div>
@@ -412,7 +361,7 @@ const RealTimeDetection: React.FC = () => {
       {/* Mobile Optimization Info */}
       <div className="mobile-info">
         <small>
-          🚀 Optimized for mobile: {INFERENCE_THROTTLE_MS}ms throttle, 
+          🚀 Mobile optimized: {INFERENCE_THROTTLE_MS}ms throttle, 
           {CANVAS_MAX_WIDTH}x{CANVAS_MAX_HEIGHT} max resolution
         </small>
       </div>
