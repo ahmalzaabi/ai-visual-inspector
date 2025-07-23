@@ -11,14 +11,16 @@ const resources = {
         inspection: "Deep Inspection",
         repair: "Fixing & Repair Procedures",
         maintenance: "Visual Predictive Maintenance",
-        quality: "Quality Control"
+        quality: "Quality Control",
+        test: "AI Object Detection Test"
       },
       descriptions: {
         assembly: "Automated verification of assembly processes and components",
         inspection: "Advanced AI-powered deep visual inspection and analysis",
         repair: "Step-by-step guided repair and fixing procedure verification",
         maintenance: "Predictive maintenance through visual pattern recognition",
-        quality: "Real-time quality control and defect detection"
+        quality: "Real-time quality control and defect detection",
+        test: "Test AI object detection with pre-trained models"
       },
       actions: {
         start: "Start Inspection",
@@ -39,6 +41,10 @@ const resources = {
         start: "Start Camera",
         placeholder: "Tap to start camera",
         error: "Camera Error"
+      },
+      detection: {
+        local_server: "Local Server",
+        device_mode: "Device Mode"
       }
     }
   },
@@ -51,14 +57,16 @@ const resources = {
         inspection: "الفحص العميق",
         repair: "إجراءات الإصلاح والتصليح",
         maintenance: "الصيانة التنبؤية البصرية",
-        quality: "مراقبة الجودة"
+        quality: "مراقبة الجودة",
+        test: "اختبار الكشف بالذكاء الاصطناعي"
       },
       descriptions: {
         assembly: "التحقق الآلي من عمليات التجميع والمكونات",
         inspection: "فحص بصري عميق متقدم مدعوم بالذكاء الاصطناعي",
         repair: "التحقق من إجراءات الإصلاح والتصليح الموجهة خطوة بخطوة",
         maintenance: "الصيانة التنبؤية من خلال التعرف على الأنماط البصرية",
-        quality: "مراقبة الجودة في الوقت الفعلي واكتشاف العيوب"
+        quality: "مراقبة الجودة في الوقت الفعلي واكتشاف العيوب",
+        test: "اختبار كشف الكائنات بالذكاء الاصطناعي باستخدام النماذج المدربة مسبقاً"
       },
       actions: {
         start: "بدء الفحص",
@@ -79,6 +87,10 @@ const resources = {
         start: "تشغيل الكاميرا",
         placeholder: "اضغط لبدء تشغيل الكاميرا",
         error: "خطأ في الكاميرا"
+      },
+      detection: {
+        local_server: "خادم محلي",
+        device_mode: "وضع الجهاز"
       }
     }
   }
