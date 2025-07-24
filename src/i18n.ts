@@ -45,8 +45,13 @@ const resources = {
         device_mode: "Device Mode"
       },
       main: {
-        welcome: "Advanced Computer Vision & AI Detection Platform",
-        description: "Harness the power of state-of-the-art neural networks and computer vision algorithms for real-time object detection, assembly verification, and intelligent visual analysis with sub-150ms inference times.",
+        welcome: "Next-Generation AI Vision Platform",
+        description: "Experience the convergence of cutting-edge technologies - where Artificial Intelligence meets Computer Vision, Machine Learning fuses with Augmented Reality, and Deep Neural Networks power real-time industrial inspection. Built for the future of intelligent automation with precision that exceeds human capability.",
+        techHighlights: {
+          ai: "Neural AI",
+          cv: "Computer Vision",
+          ar: "AR Integration"
+        },
         badges: {
           realtime: "Real-time Inference",
           accurate: "High Precision",
@@ -169,8 +174,13 @@ const resources = {
         device_mode: "وضع الجهاز"
       },
       main: {
-        welcome: "منصة الرؤية الحاسوبية والكشف المتقدمة بالذكاء الاصطناعي",
-        description: "استخدم قوة الشبكات العصبية المتطورة وخوارزميات الرؤية الحاسوبية للكشف الفوري عن الكائنات والتحقق من التجميع والتحليل البصري الذكي بأوقات استنتاج أقل من 150 مللي ثانية.",
+        welcome: "منصة الرؤية الذكية للجيل القادم", 
+        description: "اختبر تلاقي التقنيات المتطورة - حيث يلتقي الذكاء الاصطناعي مع الرؤية الحاسوبية، ويندمج التعلم الآلي مع الواقع المعزز، وتُشغل الشبكات العصبية العميقة الفحص الصناعي الفوري. مُصمم لمستقبل الأتمتة الذكية بدقة تفوق القدرة البشرية.",
+        techHighlights: {
+          ai: "الذكاء العصبي",
+          cv: "الرؤية الحاسوبية", 
+          ar: "تكامل الواقع المعزز"
+        },
         badges: {
           realtime: "الاستنتاج الفوري",
           accurate: "دقة عالية",
