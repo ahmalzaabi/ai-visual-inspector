@@ -145,140 +145,63 @@ class MLService {
   async initializeModel(modelType: ModelType): Promise<void> {
     if (this.modelsInitialized.has(modelType)) return;
 
-    console.log(`🚀 Loading ${modelType} model for iOS PWA...`);
+    // Use iOS-specific initialization for iOS devices
+    if (this.deviceCapabilities.isIOSDevice) {
+      return this.initializeModelForIOS(modelType);
+    }
+
+    console.log(`🚀 Loading ${modelType} model for desktop/Android...`);
     
     try {
-      // Setup TensorFlow.js with iOS PWA optimizations
+      // Standard desktop/Android initialization
       await tf.ready();
-      
-      // iOS PWA WebGL optimization
-      if (this.deviceCapabilities.isIOSDevice) {
-        // Use WebGL with iOS-specific optimizations
       await tf.setBackend('webgl');
       
-        // iOS Safari WebGL optimizations
-        tf.env().set('WEBGL_VERSION', 2);
-        tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
-        tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
-        tf.env().set('WEBGL_RENDER_FLOAT32_CAPABLE', false);
-        tf.env().set('WEBGL_FLUSH_THRESHOLD', 1);
-        
-        // Memory optimizations for iPhone
-        tf.env().set('WEBGL_SIZE_UPLOAD_UNIFORM', 4);
-        tf.env().set('WEBGL_MAX_TEXTURE_SIZE', 4096);
-        
-        console.log('🍎 iOS WebGL optimizations applied');
-      } else {
-        await tf.setBackend('webgl');
+      // Standard WebGL optimizations for non-iOS
       tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
       tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
-      }
 
-      if (modelType === 'esp32') {
-        // Load ESP32 Assembly Verification model
-        console.log('📦 Loading ESP32 Assembly model...');
-        
-        // Load with optimizations and validation
-        const modelUrl = '/models/esp32/model.json';
-        this.esp32Model = await this.loadModelWithOptimization(modelUrl, 'esp32');
+      // Load model with standard optimization
+      const modelUrl = this.getModelUrl(modelType);
+      const model = await this.loadModelWithOptimization(modelUrl, modelType);
+      this.assignModel(modelType, model);
       
-        // Test ESP32 model with iOS-optimized input
-        console.log('🔍 Testing ESP32 Assembly model...');
-        await this.testModelInference(this.esp32Model, 'ESP32');
-        
-      } else if (modelType === 'breadboard') {
-        // Load Breadboard model (optimized)
-        console.log('📦 Loading Breadboard model...');
-        
-        const modelUrl = '/models/breadboard_new/model.json';
-        this.breadboardModel = await this.loadModelWithOptimization(modelUrl, 'breadboard');
-        
-        // Test Breadboard model
-        console.log('🔍 Testing Breadboard model...');
-        await this.testModelInference(this.breadboardModel, 'Breadboard');
-        
-      } else if (modelType === 'motor_connected') {
-        // Load Motor Connected model
-        console.log('📦 Loading Motor Connected model...');
-        
-        const modelUrl = '/models/motor_connected/model.json';
-        this.motorConnectedModel = await this.loadModelWithOptimization(modelUrl, 'motor_connected');
-        
-        // Test Motor Connected model
-        console.log('🔍 Testing Motor Connected model...');
-        await this.testModelInference(this.motorConnectedModel, 'MotorConnected');
-        
-      } else if (modelType === 'motor_not_connected') {
-        // Load Motor Not Connected model
-        console.log('📦 Loading Motor Not Connected model...');
-        
-        const modelUrl = '/models/motor_not_connected/model.json';
-        this.motorNotConnectedModel = await this.loadModelWithOptimization(modelUrl, 'motor_not_connected');
-        
-        // Test Motor Not Connected model
-        console.log('🔍 Testing Motor Not Connected model...');
-        await this.testModelInference(this.motorNotConnectedModel, 'MotorNotConnected');
-      }
+      // Test model with standard input
+      await this.testModelInference(model, modelType);
       
       this.modelsInitialized.add(modelType);
       
       // Start memory monitoring if first model
       if (this.modelsInitialized.size === 1) {
-      this.startMemoryMonitoring();
+        this.startMemoryMonitoring();
       }
       
-      console.log(`🎯 ${modelType} model ready for iOS PWA detection!`);
+      console.log(`🎯 ${modelType} model ready for desktop/Android!`);
       
     } catch (error) {
       console.error(`❌ ${modelType} model loading failed:`, error);
-      
-      // iOS PWA: Try fallback strategies
-      if (this.deviceCapabilities.isIOSPWA) {
-        console.log('🔄 Trying iOS PWA fallback strategies...');
-        await this.tryFallbackStrategies(modelType);
-      } else {
       throw error;
     }
-  }
   }
 
 
 
   private async testModelInference(model: tf.GraphModel, modelName: string): Promise<void> {
-    tf.tidy(() => {
+    try {
       const testInput = tf.zeros([1, 640, 640, 3]);
       const output = model.predict(testInput) as tf.Tensor;
       console.log(`✅ ${modelName} model loaded! Output shape:`, output.shape);
-    });
+      
+      // Clean up test tensors
+      testInput.dispose();
+      output.dispose();
+    } catch (error) {
+      console.error(`❌ ${modelName} model test failed:`, error);
+      throw error;
+    }
   }
 
-  private async tryFallbackStrategies(modelType: ModelType): Promise<void> {
-    console.log('🔧 Attempting iOS PWA fallback strategies...');
-    
-    try {
-      // Strategy 1: Switch to CPU backend
-      console.log('🔄 Trying CPU backend...');
-      await tf.setBackend('cpu');
-      await this.initializeModel(modelType);
-      return;
-    } catch (error) {
-      console.warn('❌ CPU fallback failed:', error);
-    }
-    
-    // Strategy 2: Clear all memory and retry
-    try {
-      console.log('🧹 Clearing memory and retrying...');
-      this.forceMemoryCleanup();
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await tf.setBackend('webgl');
-      await this.initializeModel(modelType);
-      return;
-    } catch (error) {
-      console.warn('❌ Memory cleanup fallback failed:', error);
-    }
-    
-    throw new Error(`All fallback strategies failed for ${modelType}`);
-  }
+
 
   // Legacy method for backward compatibility
   async initialize(): Promise<void> {
@@ -313,10 +236,14 @@ class MLService {
       const preprocessStart = performance.now();
       
       inputTensor = tf.tidy(() => {
-        // Dynamic input size based on device capabilities and performance mode
+        // iOS Safari specific input size optimization
         let targetSize = 640; // Default high quality
         
-        if (this.deviceCapabilities.hasLimitedMemory) {
+        if (this.deviceCapabilities.isIOSDevice) {
+          // iOS Safari: Use smaller input sizes to avoid memory issues
+          targetSize = this.deviceCapabilities.hasLimitedMemory ? 320 : 416;
+          console.log(`🍎 iOS Safari using smaller input: ${targetSize}x${targetSize}`);
+        } else if (this.deviceCapabilities.hasLimitedMemory) {
           targetSize = 416; // Reduce for memory-constrained devices
         } else if (this.performanceMode === 'power_save') {
           targetSize = 480; // Balance quality and performance
@@ -326,16 +253,12 @@ class MLService {
         
         console.log(`🔧 ESP32 preprocessing: ${targetSize}x${targetSize} (${this.performanceMode} mode)`);
         
-        // Smart preprocessing with image quality optimization
+        // iOS Safari optimized preprocessing
         const rawImage = tf.browser.fromPixels(canvas);
-        
-        // Apply slight sharpening for better edge detection on compressed images
         const resized = rawImage.resizeNearestNeighbor([targetSize, targetSize]);
-        
-        // Enhanced normalization for better model performance
         const normalized = resized.div(255.0);
         
-        // Cleanup intermediate tensors
+        // Immediate cleanup for iOS memory management
         rawImage.dispose();
         resized.dispose();
         
@@ -750,11 +673,12 @@ class MLService {
       const confidence = data[4 * numBoxes + i];
       
       if (confidence > confThreshold) {
-        // Get bbox coordinates (center format)
-        const cx = data[0 * numBoxes + i] * originalWidth / 640;
-        const cy = data[1 * numBoxes + i] * originalHeight / 640;
-        const w = data[2 * numBoxes + i] * originalWidth / 640;
-        const h = data[3 * numBoxes + i] * originalHeight / 640;
+        // Get bbox coordinates (center format) - dynamic input size for iOS compatibility
+        const inputSize = this.deviceCapabilities.isIOSDevice ? 416 : 640;
+        const cx = data[0 * numBoxes + i] * originalWidth / inputSize;
+        const cy = data[1 * numBoxes + i] * originalHeight / inputSize;
+        const w = data[2 * numBoxes + i] * originalWidth / inputSize;
+        const h = data[3 * numBoxes + i] * originalHeight / inputSize;
         
         // Convert to corner format
         const x1 = Math.max(0, cx - w/2);
@@ -795,11 +719,12 @@ class MLService {
         const confidence = data[(4 + c) * numBoxes + i];
         
         if (confidence > confThreshold) {
-          // Get bbox coordinates
-          const cx = data[0 * numBoxes + i] * originalWidth / 640;
-          const cy = data[1 * numBoxes + i] * originalHeight / 640;
-          const w = data[2 * numBoxes + i] * originalWidth / 640;
-          const h = data[3 * numBoxes + i] * originalHeight / 640;
+          // Get bbox coordinates - dynamic input size for iOS compatibility
+          const inputSize = this.deviceCapabilities.isIOSDevice ? 416 : 640;
+          const cx = data[0 * numBoxes + i] * originalWidth / inputSize;
+          const cy = data[1 * numBoxes + i] * originalHeight / inputSize;
+          const w = data[2 * numBoxes + i] * originalWidth / inputSize;
+          const h = data[3 * numBoxes + i] * originalHeight / inputSize;
           
           const x1 = Math.max(0, cx - w/2);
           const y1 = Math.max(0, cy - h/2);
@@ -838,11 +763,12 @@ class MLService {
       const confidence = data[4 * numBoxes + i];
       
       if (confidence > confThreshold) {
-        // Get bbox coordinates
-        const cx = data[0 * numBoxes + i] * originalWidth / 640;
-        const cy = data[1 * numBoxes + i] * originalHeight / 640;
-        const w = data[2 * numBoxes + i] * originalWidth / 640;
-        const h = data[3 * numBoxes + i] * originalHeight / 640;
+        // Get bbox coordinates - dynamic input size for iOS compatibility
+        const inputSize = this.deviceCapabilities.isIOSDevice ? 416 : 640;
+        const cx = data[0 * numBoxes + i] * originalWidth / inputSize;
+        const cy = data[1 * numBoxes + i] * originalHeight / inputSize;
+        const w = data[2 * numBoxes + i] * originalWidth / inputSize;
+        const h = data[3 * numBoxes + i] * originalHeight / inputSize;
         
         const x1 = Math.max(0, cx - w/2);
         const y1 = Math.max(0, cy - h/2);
@@ -880,11 +806,12 @@ class MLService {
       const confidence = data[4 * numBoxes + i];
       
       if (confidence > confThreshold) {
-        // Get bbox coordinates
-        const cx = data[0 * numBoxes + i] * originalWidth / 640;
-        const cy = data[1 * numBoxes + i] * originalHeight / 640;
-        const w = data[2 * numBoxes + i] * originalWidth / 640;
-        const h = data[3 * numBoxes + i] * originalHeight / 640;
+        // Get bbox coordinates - dynamic input size for iOS compatibility
+        const inputSize = this.deviceCapabilities.isIOSDevice ? 416 : 640;
+        const cx = data[0 * numBoxes + i] * originalWidth / inputSize;
+        const cy = data[1 * numBoxes + i] * originalHeight / inputSize;
+        const w = data[2 * numBoxes + i] * originalWidth / inputSize;
+        const h = data[3 * numBoxes + i] * originalHeight / inputSize;
         
         const x1 = Math.max(0, cx - w/2);
         const y1 = Math.max(0, cy - h/2);
@@ -1386,6 +1313,184 @@ class MLService {
       
     } catch (error) {
       console.warn('⚠️ Essential model preloading failed:', error);
+    }
+  }
+
+  // ENHANCED iOS SAFARI COMPATIBILITY FIXES
+  private async initializeModelForIOS(modelType: ModelType): Promise<void> {
+    if (this.modelsInitialized.has(modelType)) return;
+
+    console.log(`🍎 Loading ${modelType} model with iOS Safari optimizations...`);
+    
+    try {
+      // CRITICAL: Setup TensorFlow.js with iOS Safari specific settings
+      await tf.ready();
+      
+      // iOS Safari has very specific WebGL requirements
+      if (this.deviceCapabilities.isIOSDevice) {
+        try {
+          // Try WebGL first with conservative settings
+          await tf.setBackend('webgl');
+          
+          // CRITICAL iOS Safari WebGL settings
+          tf.env().set('WEBGL_VERSION', 1); // Use WebGL 1.0 for better iOS compatibility
+          tf.env().set('WEBGL_FORCE_F16_TEXTURES', false); // Disable F16 textures on iOS
+          tf.env().set('WEBGL_RENDER_FLOAT32_CAPABLE', true); // Enable float32 rendering
+          tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', -1); // Aggressive texture cleanup
+          tf.env().set('WEBGL_FLUSH_THRESHOLD', -1); // Flush immediately
+          
+          // iOS Safari memory optimizations
+          tf.env().set('WEBGL_SIZE_UPLOAD_UNIFORM', 2); // Smaller uniform uploads
+          tf.env().set('WEBGL_MAX_TEXTURE_SIZE', 2048); // Reduce max texture size
+          tf.env().set('WEBGL_PACK_DEPTHWISECONV', false); // Disable for stability
+          
+          console.log('🍎 iOS Safari WebGL backend initialized successfully');
+        } catch (webglError) {
+          console.warn('⚠️ WebGL failed on iOS, falling back to CPU:', webglError);
+          await tf.setBackend('cpu');
+        }
+      } else {
+        await tf.setBackend('webgl');
+      }
+
+      // Load model with iOS-specific settings
+      let model: tf.GraphModel;
+      const modelUrl = this.getModelUrl(modelType);
+      
+      if (this.deviceCapabilities.isIOSDevice) {
+        // iOS Safari specific loading
+        model = await this.loadModelForIOSSafari(modelUrl, modelType);
+      } else {
+        model = await this.loadModelWithOptimization(modelUrl, modelType);
+      }
+      
+      // Assign model to correct property
+      this.assignModel(modelType, model);
+      
+      // iOS Safari: Smaller test input to avoid memory issues
+      const testSize = this.deviceCapabilities.isIOSDevice ? 416 : 640;
+      await this.testModelInferenceIOS(model, modelType, testSize);
+      
+      this.modelsInitialized.add(modelType);
+      console.log(`✅ ${modelType} model ready for iOS Safari!`);
+      
+    } catch (error) {
+      console.error(`❌ iOS model loading failed for ${modelType}:`, error);
+      
+      // iOS Safari fallback: Try CPU backend
+      if (this.deviceCapabilities.isIOSDevice && tf.getBackend() !== 'cpu') {
+        console.log('🔄 Trying CPU backend for iOS fallback...');
+        try {
+          await tf.setBackend('cpu');
+          const modelUrl = this.getModelUrl(modelType);
+          const model = await tf.loadGraphModel(modelUrl);
+          this.assignModel(modelType, model);
+          this.modelsInitialized.add(modelType);
+          console.log(`✅ ${modelType} loaded on CPU backend for iOS`);
+        } catch (cpuError) {
+          console.error(`❌ CPU fallback also failed:`, cpuError);
+          throw cpuError;
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // iOS Safari optimized model loading
+  private async loadModelForIOSSafari(url: string, modelType: ModelType): Promise<tf.GraphModel> {
+    console.log(`📱 Loading ${modelType} with iOS Safari optimizations...`);
+    
+    try {
+      // iOS Safari specific load options
+      const loadOptions: tf.io.LoadOptions = {
+        requestInit: {
+          cache: 'default', // Use default caching for iOS
+          mode: 'cors',
+          credentials: 'same-origin',
+          // Add timeout for iOS
+          signal: AbortSignal.timeout(30000)
+        }
+      };
+      
+      // No cache busting for iOS - can cause loading issues
+      const modelUrl = url;
+      
+      const startTime = performance.now();
+      
+      // Progressive loading with retries for iOS
+      let model: tf.GraphModel;
+      let lastError: Error | null = null;
+      
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`📥 iOS Safari load attempt ${attempt}/3 for ${modelType}`);
+          model = await tf.loadGraphModel(modelUrl, loadOptions);
+          break;
+        } catch (error) {
+          lastError = error as Error;
+          console.warn(`⚠️ iOS load attempt ${attempt} failed:`, error);
+          
+          if (attempt < 3) {
+            // Progressive delay with memory cleanup
+            this.forceMemoryCleanup();
+            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          }
+        }
+      }
+      
+      if (!model!) {
+        throw lastError || new Error('All iOS loading attempts failed');
+      }
+      
+      const loadTime = performance.now() - startTime;
+      console.log(`⏱️ iOS Safari: ${modelType} loaded in ${loadTime.toFixed(1)}ms`);
+      
+      return model;
+      
+    } catch (error) {
+      console.error(`❌ iOS Safari model loading failed:`, error);
+      throw error;
+    }
+  }
+
+  // Helper methods for iOS model management
+  private getModelUrl(modelType: ModelType): string {
+    switch (modelType) {
+      case 'esp32': return '/models/esp32/model.json';
+      case 'breadboard': return '/models/breadboard_new/model.json';
+      case 'motor_connected': return '/models/motor_connected/model.json';
+      case 'motor_not_connected': return '/models/motor_not_connected/model.json';
+      default: throw new Error(`Unknown model type: ${modelType}`);
+    }
+  }
+
+  private assignModel(modelType: ModelType, model: tf.GraphModel): void {
+    switch (modelType) {
+      case 'esp32': this.esp32Model = model; break;
+      case 'breadboard': this.breadboardModel = model; break;
+      case 'motor_connected': this.motorConnectedModel = model; break;
+      case 'motor_not_connected': this.motorNotConnectedModel = model; break;
+    }
+  }
+
+  private async testModelInferenceIOS(model: tf.GraphModel, modelName: string, inputSize: number): Promise<void> {
+    console.log(`🧪 Testing ${modelName} model on iOS (${inputSize}x${inputSize})...`);
+    
+    try {
+      const testInput = tf.zeros([1, inputSize, inputSize, 3]);
+      const output = model.predict(testInput) as tf.Tensor;
+      
+      console.log(`✅ ${modelName} iOS test - Output shape:`, output.shape);
+      console.log(`📊 ${modelName} iOS test - Output dtype:`, output.dtype);
+      
+      // Immediate cleanup for iOS
+      testInput.dispose();
+      output.dispose();
+      
+    } catch (error) {
+      console.error(`❌ ${modelName} iOS test failed:`, error);
+      throw error;
     }
   }
 }
