@@ -443,8 +443,13 @@ class MLService {
 
       // 2. Run inference on both motor models
       const inferenceStart = performance.now();
+      console.log('🔌 Running motor detection inference...');
       connectedPredictions = this.motorConnectedModel!.predict(inputTensor) as tf.Tensor;
       notConnectedPredictions = this.motorNotConnectedModel!.predict(inputTensor) as tf.Tensor;
+      console.log('📊 Motor predictions shapes:', {
+        connected: connectedPredictions.shape,
+        notConnected: notConnectedPredictions.shape
+      });
       const inferenceTime = performance.now() - inferenceStart;
 
       // 3. Process results from both models
@@ -452,6 +457,11 @@ class MLService {
       const connectedDetections = this.processYOLOOutput(connectedPredictions, canvas.width, canvas.height, 'Motor');
       const notConnectedDetections = this.processYOLOOutput(notConnectedPredictions, canvas.width, canvas.height, 'Motor');
       const postprocessTime = performance.now() - postprocessStart;
+      
+      console.log('🎯 Motor detection results:', {
+        connected: connectedDetections.length,
+        notConnected: notConnectedDetections.length
+      });
 
       const totalTime = performance.now() - startTime;
 

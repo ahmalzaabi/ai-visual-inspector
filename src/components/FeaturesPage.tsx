@@ -379,7 +379,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           context.drawImage(video, 0, 0);
 
           const startTime = performance.now();
-          const result = await mlService.detectBreadboard(canvas);
+          const result = await mlService.detectESP32Assembly(canvas);
           const endTime = performance.now();
           const inferenceTime = endTime - startTime;
 
@@ -479,10 +479,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const boxWidth = x2 - x1;
       const boxHeight = y2 - y1;
       
-      // ESP32 detection styling - Green theme
-      context.strokeStyle = '#10b981';
+      // ESP32 detection styling - Orange theme (restored original)
+      context.strokeStyle = '#ff6b35';
       context.lineWidth = isIOSPWA ? 2 : 3; // Thinner lines for iOS PWA performance
-      context.fillStyle = 'rgba(16, 185, 129, 0.1)';
+      context.fillStyle = 'rgba(255, 107, 53, 0.1)';
       
       // Fill detection area
       context.fillRect(x1, y1, boxWidth, boxHeight);
@@ -495,7 +495,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       context.font = isIOSPWA ? '12px -apple-system, BlinkMacSystemFont, sans-serif' : '14px Arial';
       const textWidth = context.measureText(label).width;
       
-      context.fillStyle = '#10b981';
+      context.fillStyle = '#ff6b35';
       context.fillRect(x1, y1 - 22, textWidth + 8, 18);
       
       // Label text
@@ -504,7 +504,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       
       // Corner indicators - simplified for iOS PWA performance
       const cornerSize = isIOSPWA ? 8 : 12;
-      context.fillStyle = '#10b981';
+      context.fillStyle = '#ff6b35';
       
       // Top corners
       context.fillRect(x1 - 1, y1 - 1, cornerSize, 2);
