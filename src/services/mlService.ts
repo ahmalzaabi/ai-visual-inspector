@@ -186,7 +186,7 @@ class MLService {
         console.log('🔍 Testing ESP32 Assembly model...');
         await this.testModelInference(this.esp32Model, 'ESP32');
         
-            } else if (modelType === 'breadboard') {
+      } else if (modelType === 'breadboard') {
         // Load Breadboard model (optimized)
         console.log('📦 Loading Breadboard model...');
         
