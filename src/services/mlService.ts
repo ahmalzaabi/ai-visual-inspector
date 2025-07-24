@@ -404,7 +404,10 @@ class MLService {
   }
 
   async detectMotorConnection(canvas: HTMLCanvasElement): Promise<MotorAnalysis> {
-    // SIMPLIFIED: Now testing motor_not_connected model
+    // Load both motor models
+    if (!this.modelsInitialized.has('motor_connected')) {
+      await this.initializeModel('motor_connected');
+    }
     if (!this.modelsInitialized.has('motor_not_connected')) {
       await this.initializeModel('motor_not_connected');
     }
@@ -422,6 +425,7 @@ class MLService {
 
     const startTime = performance.now();
     let inputTensor: tf.Tensor | null = null;
+    let connectedPredictions: tf.Tensor | null = null;
     let notConnectedPredictions: tf.Tensor | null = null;
 
     try {
@@ -438,42 +442,57 @@ class MLService {
       const preprocessTime = performance.now() - preprocessStart;
       console.log('📸 Input tensor created:', inputTensor.shape);
 
-      // 2. Run inference on ONLY motor_not_connected model for testing
+      // 2. Run inference on both motor models
       const inferenceStart = performance.now();
-      console.log('🔌 Running motor_not_connected model inference...');
+      console.log('🔌 Running both motor models...');
+      connectedPredictions = this.motorConnectedModel!.predict(inputTensor) as tf.Tensor;
       notConnectedPredictions = this.motorNotConnectedModel!.predict(inputTensor) as tf.Tensor;
-      console.log('📊 Motor_not_connected predictions shape:', notConnectedPredictions.shape);
-      console.log('📊 Raw prediction data sample:', Array.from(notConnectedPredictions.dataSync().slice(0, 10)));
       const inferenceTime = performance.now() - inferenceStart;
 
-      // 3. Process results with detailed debugging
+      // 3. Process results from both models
       const postprocessStart = performance.now();
-      console.log('🔍 Processing motor_not_connected model with classes: ["connect_here"]');
+      const connectedDetections = this.processMotorYOLOOutput(connectedPredictions, canvas.width, canvas.height, ['connected', 'motor']);
       const notConnectedDetections = this.processMotorYOLOOutput(notConnectedPredictions, canvas.width, canvas.height, ['connect_here']);
       const postprocessTime = performance.now() - postprocessStart;
       
-      console.log('🎯 Motor_not_connected detection results:', {
-        detections: notConnectedDetections.length,
-        detectedObjects: notConnectedDetections.map(d => ({ class: d.class, confidence: d.confidence.toFixed(3) }))
+      console.log('🎯 Motor detection results:', {
+        connected: connectedDetections.length,
+        notConnected: notConnectedDetections.length,
+        motorCount: connectedDetections.filter(d => d.class === 'motor').length
       });
 
       const totalTime = performance.now() - startTime;
 
-      // SIMPLIFIED: Just use not_connected model results for now
+      // Determine connection status based on both models
       let connectionStatus: 'connected' | 'not_connected' | 'unknown' = 'unknown';
+      let allDetections: DetectionResult[] = [];
       let confidence = 0;
 
-      if (notConnectedDetections.length > 0) {
-        // If we detect anything, consider it "not_connected" for testing
+      // Count motors specifically
+      const motorDetections = connectedDetections.filter(d => d.class === 'motor');
+      const motorCount = motorDetections.length;
+
+      if (motorDetections.length > 0) {
+        connectionStatus = 'connected';
+        allDetections = connectedDetections;
+        confidence = Math.max(...connectedDetections.map(d => d.confidence));
+        
+        if (motorCount === 4) {
+          console.log('✅ ALL 4 MOTORS DETECTED - Assembly Complete!');
+        } else {
+          console.log(`⚠️ ${motorCount}/4 MOTORS DETECTED - ${4 - motorCount} motors missing`);
+        }
+      } else if (notConnectedDetections.length > 0) {
         connectionStatus = 'not_connected';
+        allDetections = notConnectedDetections;
         confidence = Math.max(...notConnectedDetections.map(d => d.confidence));
-        console.log('✅ DETECTED MOTOR NOT CONNECTED:', { status: connectionStatus, confidence });
+        console.log('🔌 ASSEMBLY STEP 1: Connection points detected');
       } else {
-        console.log('❌ NO MOTOR NOT-CONNECTED DETECTION found');
+        console.log('❓ No motor connections detected');
       }
 
       const result: MotorAnalysis = {
-        detections: notConnectedDetections,
+        detections: allDetections,
         confidence,
         processingTime: totalTime,
         connectionStatus,
@@ -501,6 +520,7 @@ class MLService {
     } finally {
       // Clean up tensors
       if (inputTensor) inputTensor.dispose();
+      if (connectedPredictions) connectedPredictions.dispose();
       if (notConnectedPredictions) notConnectedPredictions.dispose();
       this.cleanupTempTensors();
     }

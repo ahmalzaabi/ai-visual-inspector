@@ -73,17 +73,22 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [error, setError] = useState<string | null>(null)
   const [showCompletion, setShowCompletion] = useState(false)
 
-  // Assembly Verification (ESP32) states
+  // Assembly Verification - Multiple Models with Smart Tracking
+  const [activeAssemblyModel, setActiveAssemblyModel] = useState<'esp32' | 'motor_connected' | 'motor_not_connected' | null>(null)
   const [isAssemblyRealtimeActive, setIsAssemblyRealtimeActive] = useState(false)
   const [assemblyDetections, setAssemblyDetections] = useState<any[]>([])
   const [assemblyFPS, setAssemblyFPS] = useState(0)
 
-  // Motor Detection states (replacing Deep Inspection)
+  const [assemblyProgress, setAssemblyProgress] = useState({
+    step1_connections: 0,  // Number of connection points found
+    step2_motors: 0,      // Number of motors detected (out of 4)
+    step3_esp32: false,   // ESP32 board detected
+    currentStep: 1,       // Current assembly step (1, 2, or 3)
+    isComplete: false     // All assembly steps completed
+  })
+
+  // Deep Inspection states (no model for now)
   const [isInspectionRealtimeActive, setIsInspectionRealtimeActive] = useState(false)
-  const [inspectionDetections, setInspectionDetections] = useState<any[]>([])
-  const [inspectionFPS, setInspectionFPS] = useState(0)
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'not_connected' | 'unknown'>('unknown')
-  const [motorConfidence, setMotorConfidence] = useState(0)
 
   // iOS PWA performance monitoring
   const [performanceStats, setPerformanceStats] = useState<any>(null)
@@ -331,9 +336,14 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     // Reset states
     setIsPlaying(false)
     setAssemblyDetections([])
-            setInspectionDetections([])
-        setConnectionStatus('unknown')
-        setMotorConfidence(0)
+
+    setAssemblyProgress({
+      step1_connections: 0,
+      step2_motors: 0,
+      step3_esp32: false,
+      currentStep: 1,
+      isComplete: false
+    })
     
     // Clear overlay
     if (overlayCanvasRef.current) {
@@ -379,12 +389,70 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           context.drawImage(video, 0, 0);
 
           const startTime = performance.now();
-          const result = await mlService.detectESP32Assembly(canvas);
+          let result: any;
+          
+          // Run different models based on selection with smart progress tracking
+          switch (activeAssemblyModel) {
+            case 'esp32':
+              result = await mlService.detectESP32Assembly(canvas);
+              setAssemblyDetections(result.detections);
+              const esp32Found = result.detections.length > 0;
+              drawAssemblyOverlay(overlayContext, result.detections, canvas.width, canvas.height, 'ESP32');
+              
+              // Update ESP32 progress and check completion
+              setAssemblyProgress(prev => {
+                const newProgress = { ...prev, step3_esp32: esp32Found };
+                if (esp32Found && prev.step2_motors === 4 && prev.step1_connections > 0) {
+                  newProgress.isComplete = true;
+                  newProgress.currentStep = 3;
+                }
+                return newProgress;
+              });
+              break;
+              
+            case 'motor_connected':
+              result = await mlService.detectMotorConnection(canvas);
+              setAssemblyDetections(result.detections);
+              const motorDetections = result.detections.filter((d: any) => d.class === 'motor');
+              const currentMotorCount = motorDetections.length;
+              drawAssemblyOverlay(overlayContext, result.detections, canvas.width, canvas.height, 'MotorConnected');
+              
+              // Smart motor counting with progress tracking
+              setAssemblyProgress(prev => {
+                const newProgress = { ...prev, step2_motors: currentMotorCount };
+                if (currentMotorCount > 0) {
+                  newProgress.currentStep = Math.max(newProgress.currentStep, 2);
+                }
+                if (currentMotorCount === 4) {
+                  console.log('🎉 ALL 4 MOTORS DETECTED - Motor Assembly Complete!');
+                } else if (currentMotorCount > 0) {
+                  console.log(`⚡ ${currentMotorCount}/4 MOTORS DETECTED - ${4 - currentMotorCount} motors missing`);
+                }
+                return newProgress;
+              });
+              break;
+              
+            case 'motor_not_connected':
+              result = await mlService.detectMotorConnection(canvas);
+              setAssemblyDetections(result.detections);
+              const connectionPoints = result.detections.filter((d: any) => d.class === 'connect_here');
+              const connectionCount = connectionPoints.length;
+              drawAssemblyOverlay(overlayContext, result.detections, canvas.width, canvas.height, 'MotorNotConnected');
+              
+              // Assembly Step 1 progress tracking
+              setAssemblyProgress(prev => {
+                const newProgress = { ...prev, step1_connections: connectionCount };
+                if (connectionCount > 0) {
+                  console.log('🔌 ASSEMBLY STEP 1: Connection points detected - Ready for motor installation');
+                  newProgress.currentStep = Math.max(newProgress.currentStep, 1);
+                }
+                return newProgress;
+              });
+              break;
+          }
+          
           const endTime = performance.now();
           const inferenceTime = endTime - startTime;
-
-          setAssemblyDetections(result.detections);
-          drawAssemblyOverlay(overlayContext, result.detections, canvas.width, canvas.height);
           
           // iOS PWA: Adaptive FPS calculation
           const targetFPS = deviceCapabilities.isLowEnd ? 15 : 20
@@ -415,7 +483,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     };
 
     detectFrame();
-  }, [isAssemblyRealtimeActive, deviceCapabilities, updatePerformanceStats]);
+  }, [isAssemblyRealtimeActive, activeAssemblyModel, deviceCapabilities, updatePerformanceStats]);
 
   // Deep Inspection real-time detection
   const startInspectionRealtimeDetection = useCallback(() => {
@@ -439,20 +507,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           
           context.drawImage(video, 0, 0);
 
-          const startTime = performance.now();
-          const result = await mlService.detectMotorConnection(canvas);
-          const endTime = performance.now();
-          const inferenceTime = endTime - startTime;
-
-          setInspectionDetections(result.detections);
-          setConnectionStatus(result.connectionStatus);
-          setMotorConfidence(result.confidence);
-          drawInspectionOverlay(overlayContext, result.detections, canvas.width, canvas.height);
-          
-          // iOS PWA: Adaptive FPS calculation
-          const targetFPS = deviceCapabilities.isLowEnd ? 12 : 18
-          const actualFPS = Math.min(Math.round(1000 / Math.max(inferenceTime, 16)), targetFPS)
-          setInspectionFPS(actualFPS)
+          // Deep Inspection feature disabled for now - no model
+          console.log('Deep Inspection feature disabled - no model configured');
           
           // Update performance stats periodically
           if (Math.random() < 0.1) { // 10% chance per frame
@@ -471,7 +527,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     detectFrame();
   }, [isInspectionRealtimeActive, deviceCapabilities, updatePerformanceStats]);
 
-  const drawAssemblyOverlay = (context: CanvasRenderingContext2D, detections: any[], width: number, height: number) => {
+  const drawAssemblyOverlay = (context: CanvasRenderingContext2D, detections: any[], width: number, height: number, modelType: string) => {
     context.clearRect(0, 0, width, height);
     
     detections.forEach((detection) => {
@@ -479,10 +535,32 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const boxWidth = x2 - x1;
       const boxHeight = y2 - y1;
       
-      // ESP32 detection styling - Orange theme (restored original)
-      context.strokeStyle = '#ff6b35';
-      context.lineWidth = isIOSPWA ? 2 : 3; // Thinner lines for iOS PWA performance
-      context.fillStyle = 'rgba(255, 107, 53, 0.1)';
+      // Different colors for different models
+      let strokeColor = '#ff6b35'; // ESP32 orange
+      let fillColor = 'rgba(255, 107, 53, 0.1)';
+      let label = '';
+      
+      switch (modelType) {
+        case 'ESP32':
+          strokeColor = '#ff6b35';
+          fillColor = 'rgba(255, 107, 53, 0.1)';
+          label = `ESP32 ${(detection.confidence * 100).toFixed(0)}%`;
+          break;
+        case 'MotorConnected':
+          strokeColor = '#10b981'; // Green for connected motors
+          fillColor = 'rgba(16, 185, 129, 0.1)';
+          label = `${detection.class} ${(detection.confidence * 100).toFixed(0)}%`;
+          break;
+        case 'MotorNotConnected':
+          strokeColor = '#f59e0b'; // Yellow for connection points
+          fillColor = 'rgba(245, 158, 11, 0.1)';
+          label = `Step 1: ${detection.class} ${(detection.confidence * 100).toFixed(0)}%`;
+          break;
+      }
+      
+      context.strokeStyle = strokeColor;
+      context.lineWidth = isIOSPWA ? 2 : 3;
+      context.fillStyle = fillColor;
       
       // Fill detection area
       context.fillRect(x1, y1, boxWidth, boxHeight);
@@ -491,11 +569,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       context.strokeRect(x1, y1, boxWidth, boxHeight);
       
       // Label background - optimized for iOS PWA
-      const label = `ESP32 ${(detection.confidence * 100).toFixed(0)}%`;
       context.font = isIOSPWA ? '12px -apple-system, BlinkMacSystemFont, sans-serif' : '14px Arial';
       const textWidth = context.measureText(label).width;
       
-      context.fillStyle = '#ff6b35';
+      context.fillStyle = strokeColor;
       context.fillRect(x1, y1 - 22, textWidth + 8, 18);
       
       // Label text
@@ -504,7 +581,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       
       // Corner indicators - simplified for iOS PWA performance
       const cornerSize = isIOSPWA ? 8 : 12;
-      context.fillStyle = '#ff6b35';
+      context.fillStyle = strokeColor;
       
       // Top corners
       context.fillRect(x1 - 1, y1 - 1, cornerSize, 2);
@@ -520,64 +597,23 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     });
   };
 
-  const drawInspectionOverlay = (context: CanvasRenderingContext2D, detections: any[], width: number, height: number) => {
-    context.clearRect(0, 0, width, height);
-    
-    detections.forEach((detection) => {
-      const [x1, y1, x2, y2] = detection.bbox;
-      const boxWidth = x2 - x1;
-      const boxHeight = y2 - y1;
-      
-      // Defect detection styling - Red/Orange theme
-      const isHighSeverity = detection.confidence > 0.7;
-      const strokeColor = isHighSeverity ? '#ef4444' : '#f59e0b';
-      const fillColor = isHighSeverity ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)';
-      
-      context.strokeStyle = strokeColor;
-      context.lineWidth = isIOSPWA ? 1.5 : 2; // Thinner lines for iOS PWA
-      context.fillStyle = fillColor;
-      
-      // Fill detection area
-      context.fillRect(x1, y1, boxWidth, boxHeight);
-      
-      // Draw border
-      context.strokeRect(x1, y1, boxWidth, boxHeight);
-      
-      // Label background
-      const label = `${detection.class} ${(detection.confidence * 100).toFixed(0)}%`;
-      context.font = isIOSPWA ? '10px -apple-system, BlinkMacSystemFont, sans-serif' : '12px Arial';
-      const textWidth = context.measureText(label).width;
-      
-      context.fillStyle = strokeColor;
-      context.fillRect(x1, y1 - 18, textWidth + 6, 14);
-      
-      // Label text
-      context.fillStyle = 'white';
-      context.fillText(label, x1 + 3, y1 - 6);
-      
-      // Warning indicator for high severity (simplified for iOS PWA)
-      if (isHighSeverity && !isIOSPWA) { // Skip complex drawing on iOS PWA for performance
-        context.fillStyle = '#ef4444';
-        context.beginPath();
-        context.arc(x2 - 6, y1 + 6, 3, 0, 2 * Math.PI);
-        context.fill();
-        
-        context.fillStyle = 'white';
-        context.font = 'bold 6px Arial';
-        context.fillText('!', x2 - 8, y1 + 8);
-      }
-    });
-  };
 
-  // Toggle Assembly real-time detection
+
+  // Toggle Assembly real-time detection with model validation
   const toggleAssemblyRealtimeDetection = () => {
+    if (!activeAssemblyModel && !isAssemblyRealtimeActive) {
+      console.warn('Please select an assembly model first');
+      alert('Please select an assembly model first (ESP32, Motor Connected, or Connection Points)');
+      return;
+    }
+
     if (isAssemblyRealtimeActive) {
       setIsAssemblyRealtimeActive(false);
       if (assemblyAnimationRef.current) {
         cancelAnimationFrame(assemblyAnimationRef.current);
       }
       setAssemblyDetections([]);
-      // Clear overlay
+      // Clear overlay but maintain progress tracking
       if (overlayCanvasRef.current) {
         const overlayContext = overlayCanvasRef.current.getContext('2d');
         if (overlayContext) {
@@ -597,9 +633,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       if (inspectionAnimationRef.current) {
         cancelAnimationFrame(inspectionAnimationRef.current);
       }
-      setInspectionDetections([]);
-      setConnectionStatus('unknown');
-      setMotorConfidence(0);
+      // Deep Inspection cleanup - no states to reset
       // Clear overlay
       if (overlayCanvasRef.current) {
         const overlayContext = overlayCanvasRef.current.getContext('2d');
@@ -836,11 +870,107 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 <div className="camera-controls">
                   {activeFeature === 'assembly' ? (
                     <>
+                      {/* Assembly Model Selection */}
+                      <div className="assembly-model-selector">
+                        <h4>🔧 Select Assembly Model:</h4>
+                        <div className="model-buttons">
+                          <button 
+                            className={`btn model-btn ${activeAssemblyModel === 'motor_not_connected' ? 'btn-primary active' : 'btn-secondary'}`}
+                            onClick={() => setActiveAssemblyModel('motor_not_connected')}
+                          >
+                            🔌 Step 1: Connection Points
+                          </button>
+                          
+                          <button 
+                            className={`btn model-btn ${activeAssemblyModel === 'motor_connected' ? 'btn-primary active' : 'btn-secondary'}`}
+                            onClick={() => setActiveAssemblyModel('motor_connected')}
+                          >
+                            ⚡ Step 2: Motor Detection
+                          </button>
+                          
+                          <button 
+                            className={`btn model-btn ${activeAssemblyModel === 'esp32' ? 'btn-primary active' : 'btn-secondary'}`}
+                            onClick={() => setActiveAssemblyModel('esp32')}
+                          >
+                            🔧 Step 3: ESP32 Board
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Assembly Progress Tracker */}
+                      {(assemblyProgress.step1_connections > 0 || assemblyProgress.step2_motors > 0 || assemblyProgress.step3_esp32) && (
+                        <div className="assembly-progress-tracker">
+                          <h4>📊 Assembly Progress:</h4>
+                          <div className="progress-steps">
+                            <div className={`progress-step ${assemblyProgress.step1_connections > 0 ? 'completed' : assemblyProgress.currentStep === 1 ? 'active' : 'pending'}`}>
+                              <div className="step-icon">🔌</div>
+                              <div className="step-info">
+                                <span className="step-title">Step 1: Connection Points</span>
+                                <span className="step-status">
+                                  {assemblyProgress.step1_connections > 0 
+                                    ? `✅ ${assemblyProgress.step1_connections} connection points detected` 
+                                    : 'Waiting for connection points...'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className={`progress-step ${assemblyProgress.step2_motors === 4 ? 'completed' : assemblyProgress.step2_motors > 0 ? 'active' : 'pending'}`}>
+                              <div className="step-icon">⚡</div>
+                              <div className="step-info">
+                                <span className="step-title">Step 2: Motor Installation</span>
+                                <span className="step-status">
+                                  {assemblyProgress.step2_motors === 4 
+                                    ? '✅ All 4 motors detected!' 
+                                    : assemblyProgress.step2_motors > 0 
+                                      ? `⚠️ ${assemblyProgress.step2_motors}/4 motors - ${4 - assemblyProgress.step2_motors} missing`
+                                      : 'Waiting for motors...'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className={`progress-step ${assemblyProgress.step3_esp32 ? 'completed' : assemblyProgress.currentStep === 3 ? 'active' : 'pending'}`}>
+                              <div className="step-icon">🔧</div>
+                              <div className="step-info">
+                                <span className="step-title">Step 3: ESP32 Board</span>
+                                <span className="step-status">
+                                  {assemblyProgress.step3_esp32 
+                                    ? '✅ ESP32 board detected!' 
+                                    : 'Waiting for ESP32 board...'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Overall Progress Bar */}
+                          <div className="overall-progress">
+                            <div className="progress-bar">
+                              <div 
+                                className="progress-fill" 
+                                style={{ 
+                                  width: `${((assemblyProgress.step1_connections > 0 ? 1 : 0) + 
+                                            (assemblyProgress.step2_motors > 0 ? assemblyProgress.step2_motors / 4 : 0) + 
+                                            (assemblyProgress.step3_esp32 ? 1 : 0)) / 3 * 100}%` 
+                                }}
+                              ></div>
+                            </div>
+                            <span className="progress-text">
+                              {assemblyProgress.isComplete 
+                                ? '🎉 Assembly Complete!' 
+                                : `Assembly Progress: ${Math.round(((assemblyProgress.step1_connections > 0 ? 1 : 0) + 
+                                                                    (assemblyProgress.step2_motors > 0 ? assemblyProgress.step2_motors / 4 : 0) + 
+                                                                    (assemblyProgress.step3_esp32 ? 1 : 0)) / 3 * 100)}%`}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Assembly Control Button */}
                       <button 
-                        className={`btn ${isAssemblyRealtimeActive ? 'btn-danger' : 'btn-primary'}`}
+                        className={`btn ${activeAssemblyModel ? 'btn-primary' : 'btn-disabled'}`}
                         onClick={toggleAssemblyRealtimeDetection}
+                        disabled={!activeAssemblyModel}
                       >
-                        {isAssemblyRealtimeActive ? '⏹️ Stop Assembly Detection' : '🔧 Start Assembly Detection'}
+                        {isAssemblyRealtimeActive ? '⏹️ Stop Detection' : `▶️ Start ${activeAssemblyModel ? activeAssemblyModel.replace('_', ' ').replace('motor ', 'Motor ').replace('not connected', 'Connection Points').replace('connected', 'Detection').replace('esp32', 'ESP32') : ''} Detection`}
                       </button>
                       {isIOSPWA && isAssemblyRealtimeActive && (
                         <div className="ios-performance-hint">
@@ -858,7 +988,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                       </button>
                       {isIOSPWA && isInspectionRealtimeActive && (
                         <div className="ios-performance-hint">
-                          <span className="hint">FPS: {inspectionFPS} | Status: {connectionStatus}</span>
+                          <span className="hint">Feature Disabled - No Model Configured</span>
                         </div>
                       )}
                     </>
@@ -927,8 +1057,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 <div className="panel-header">
                   <h3>🔌 Motor Connection Analysis</h3>
                   <div className="panel-stats">
-                    <span className="stat">FPS: {inspectionFPS}</span>
-                    <span className="stat">Confidence: {(motorConfidence * 100).toFixed(0)}%</span>
+                    <span className="stat">Status: Disabled</span>
+                    <span className="stat">Model: Not Configured</span>
                     {isIOSPWA && performanceStats && (
                       <span className="stat">Memory: {performanceStats.memory.memoryMB}MB</span>
                     )}
@@ -938,48 +1068,39 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 <div className="connection-indicator">
                   <div className="connection-status">
                     <div 
-                      className={`status-indicator ${connectionStatus}`}
-                    ></div>
-                    <span className="status-label">
-                      {connectionStatus === 'connected' ? '✅ Motor Connected' : 
-                       connectionStatus === 'not_connected' ? '❌ Motor Not Connected' : 
-                       '❓ Checking Connection...'}
-                    </span>
+                      className="status-indicator unknown"
+                    >
+                      🚫 Feature Disabled
+                    </div>
                   </div>
+                  
                   <div className="confidence-bar">
                     <div 
                       className="confidence-fill" 
                       style={{ 
-                        width: `${motorConfidence * 100}%`,
-                        backgroundColor: motorConfidence >= 0.8 ? '#10b981' : motorConfidence >= 0.5 ? '#f59e0b' : '#ef4444'
+                        width: '0%',
+                        backgroundColor: '#6b7280'
                       }}
                     ></div>
                   </div>
                 </div>
                 
-                {inspectionDetections.length > 0 ? (
-                  <div className="detections-grid">
-                    {inspectionDetections.slice(0, isIOSPWA ? 3 : 5).map((detection, index) => (
-                      <div key={index} className="detection-item inspection-detection">
-                        <div className="detection-info">
+                <div className="detections-list">
+                  {false ? (
+                    <div className="detections-list">
+                      {[].map((detection: any, index: number) => (
+                        <div key={index} className="detection-item">
                           <span className="detection-class">{detection.class}</span>
-                          <span className="detection-confidence">
-                            {(detection.confidence * 100).toFixed(1)}%
-                          </span>
+                          <span className="detection-confidence">{(detection.confidence * 100).toFixed(0)}%</span>
                         </div>
-                        <div className="detection-bbox">
-                          Position: ({Math.round(detection.bbox[0])}, {Math.round(detection.bbox[1])})
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="no-detections">
-                    <p>✅ No defects detected</p>
-                    <p className="hint">Quality inspection in progress...</p>
-                    {isIOSPWA && <p className="hint">AI analysis optimized for iOS</p>}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="no-detections">
+                      <span>🚫 Deep Inspection Disabled - No Model Configured</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </ErrorBoundary>
