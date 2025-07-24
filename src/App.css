@@ -1615,7 +1615,7 @@
   }
   
   .contact-actions {
-    flex-direction: column;
+  flex-direction: column;
     align-items: center;
   }
 }
@@ -2734,9 +2734,9 @@
   .btn-sm {
     min-height: 40px;
     padding: 8px 16px;
-  }
-  
-  .detection-item {
+}
+
+.detection-item {
     /* Larger touch targets for mobile */
     min-height: 48px;
     padding: 16px;
@@ -2797,7 +2797,7 @@
   
   .detection-item {
     padding: 12px;
-    font-size: 0.9rem;
+  font-size: 0.9rem;
   }
 }
 
