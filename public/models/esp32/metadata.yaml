@@ -1,0 +1,10 @@
+task: detect
+model_type: yolov8
+classes:
+  - esp32
+input_shape: [1, 640, 640, 3]
+output_format: yolo
+description: "ESP32 board detection model for assembly verification"
+version: "1.0"
+size_mb: 12
+optimized_for: "mobile_pwa" 

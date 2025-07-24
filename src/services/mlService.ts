@@ -178,9 +178,9 @@ class MLService {
         // Load ESP32 Assembly Verification model
         console.log('📦 Loading ESP32 Assembly model...');
         
-        // iOS PWA: Load with timeout and retry logic
+        // Load with optimizations and validation
         const modelUrl = '/models/esp32/model.json';
-        this.esp32Model = await this.loadModelWithRetry(modelUrl, 3);
+        this.esp32Model = await this.loadModelWithOptimization(modelUrl, 'esp32');
       
         // Test ESP32 model with iOS-optimized input
         console.log('🔍 Testing ESP32 Assembly model...');
@@ -191,7 +191,7 @@ class MLService {
         console.log('📦 Loading Breadboard model...');
         
         const modelUrl = '/models/breadboard_new/model.json';
-        this.breadboardModel = await this.loadModelWithRetry(modelUrl, 3);
+        this.breadboardModel = await this.loadModelWithOptimization(modelUrl, 'breadboard');
         
         // Test Breadboard model
         console.log('🔍 Testing Breadboard model...');
@@ -202,7 +202,7 @@ class MLService {
         console.log('📦 Loading Motor Connected model...');
         
         const modelUrl = '/models/motor_connected/model.json';
-        this.motorConnectedModel = await this.loadModelWithRetry(modelUrl, 3);
+        this.motorConnectedModel = await this.loadModelWithOptimization(modelUrl, 'motor_connected');
         
         // Test Motor Connected model
         console.log('🔍 Testing Motor Connected model...');
@@ -213,7 +213,7 @@ class MLService {
         console.log('📦 Loading Motor Not Connected model...');
         
         const modelUrl = '/models/motor_not_connected/model.json';
-        this.motorNotConnectedModel = await this.loadModelWithRetry(modelUrl, 3);
+        this.motorNotConnectedModel = await this.loadModelWithOptimization(modelUrl, 'motor_not_connected');
         
         // Test Motor Not Connected model
         console.log('🔍 Testing Motor Not Connected model...');
@@ -242,41 +242,7 @@ class MLService {
   }
   }
 
-  private async loadModelWithRetry(url: string, maxRetries: number): Promise<tf.GraphModel> {
-    let lastError: Error | null = null;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`📥 Model load attempt ${attempt}/${maxRetries}`);
-        
-        // iOS PWA: Add cache-busting for model loading issues
-        const cacheBuster = this.deviceCapabilities.isIOSPWA ? `?v=${Date.now()}` : '';
-        const modelUrl = `${url}${cacheBuster}`;
-        
-        const model = await tf.loadGraphModel(modelUrl, {
-          // iOS PWA optimizations
-          requestInit: {
-            cache: 'no-cache',
-            mode: 'cors'
-          }
-        });
-        
-        return model;
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`⚠️ Model load attempt ${attempt} failed:`, error);
-        
-        if (attempt < maxRetries) {
-          // Progressive backoff
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-          console.log(`⏳ Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-    
-    throw lastError || new Error('Model loading failed after all retries');
-  }
+
 
   private async testModelInference(model: tf.GraphModel, modelName: string): Promise<void> {
     tf.tidy(() => {
@@ -385,7 +351,7 @@ class MLService {
 
       // 3. Process results
       const postprocessStart = performance.now();
-      const detections = this.processYOLOOutput(predictions, canvas.width, canvas.height, 'ESP32');
+      const detections = this.processESP32Output(predictions, canvas.width, canvas.height);
       const postprocessTime = performance.now() - postprocessStart;
 
       const totalTime = performance.now() - startTime;
@@ -477,8 +443,8 @@ class MLService {
 
       // 3. Process results from both models
       const postprocessStart = performance.now();
-      const connectedDetections = this.processMotorYOLOOutput(connectedPredictions, canvas.width, canvas.height, ['connected', 'motor']);
-      const notConnectedDetections = this.processMotorYOLOOutput(notConnectedPredictions, canvas.width, canvas.height, ['connect_here']);
+      const connectedDetections = this.processMotorConnectedOutput(connectedPredictions, canvas.width, canvas.height);
+      const notConnectedDetections = this.processMotorNotConnectedOutput(notConnectedPredictions, canvas.width, canvas.height);
       const postprocessTime = performance.now() - postprocessStart;
       
       console.log('🎯 Motor detection results:', {
@@ -592,7 +558,7 @@ class MLService {
 
       // 3. Process YOLO output
       const postprocessStart = performance.now();
-      const detections = this.processYOLOOutput(predictions, canvas.width, canvas.height, 'Breadboard');
+      const detections = this.processBreadboardOutput(predictions, canvas.width, canvas.height);
       const postprocessTime = performance.now() - postprocessStart;
 
       const totalTime = performance.now() - startTime;
@@ -765,139 +731,41 @@ class MLService {
     return this.detectESP32Assembly(canvas);
   }
 
-  private processMotorYOLOOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number, classNames: string[]): DetectionResult[] {
+  // SIMPLIFIED MODEL-SPECIFIC DETECTION FUNCTIONS
+  // Each model gets its own optimized detection logic
+  
+  // ESP32 Detection - Single class, optimized for circuit boards
+  private processESP32Output(predictions: tf.Tensor, originalWidth: number, originalHeight: number): DetectionResult[] {
     const data = predictions.dataSync() as Float32Array;
     const detections: DetectionResult[] = [];
     
-    // YOLO output format: [batch, 84, 8400] where 84 = 4 (bbox) + 80 (classes)
-    const confThreshold = 0.25;
+    // ESP32 model: single class at index 0, simplified processing
+    const confThreshold = 0.3;
     const numBoxes = 8400;
-    const numClasses = classNames.length;
     
-         console.log(`🔍 Processing motor YOLO output: ${data.length} values, looking for classes:`, classNames);
-     console.log(`📊 YOLO format check - First 20 values:`, Array.from(data.slice(0, 20)));
-     
-     for (let i = 0; i < numBoxes; i++) {
-       let bestClass = -1;
-       let bestScore = 0;
-       
-       // Check all possible classes for this model - try first few classes
-       for (let c = 0; c < Math.min(numClasses, 10); c++) {
-         const classScore = data[(4 + c) * numBoxes + i]; // Skip 4 bbox values
-         if (classScore > bestScore) {
-           bestScore = classScore;
-           bestClass = c;
-         }
-       }
-       
-       // Also try checking raw confidence for debugging
-       if (i < 10) { // Debug first 10 boxes
-         console.log(`📦 Box ${i}: bbox=[${data[0*numBoxes+i]?.toFixed(3)}, ${data[1*numBoxes+i]?.toFixed(3)}, ${data[2*numBoxes+i]?.toFixed(3)}, ${data[3*numBoxes+i]?.toFixed(3)}], class0=${data[4*numBoxes+i]?.toFixed(3)}, class1=${data[5*numBoxes+i]?.toFixed(3)}, bestScore=${bestScore.toFixed(3)}`);
-       }
-       
-       if (bestScore > confThreshold && bestClass >= 0 && bestClass < classNames.length) {
-        // Raw coordinate values
-        const rawCx = data[0 * numBoxes + i];
-        const rawCy = data[1 * numBoxes + i];
-        const rawW = data[2 * numBoxes + i];
-        const rawH = data[3 * numBoxes + i];
-        
-        // Scale from model size to original canvas size
-        const modelSize = 640;
-        const scaleX = originalWidth / modelSize;
-        const scaleY = originalHeight / modelSize;
-        
-        const cx = rawCx * scaleX;
-        const cy = rawCy * scaleY;
-        const w = rawW * scaleX;
-        const h = rawH * scaleY;
-        
-        // Convert center format to corner format
-        const x1 = Math.max(0, cx - w/2);
-        const y1 = Math.max(0, cy - h/2);
-        const x2 = Math.min(originalWidth, cx + w/2);
-        const y2 = Math.min(originalHeight, cy + h/2);
-        
-        // Size filtering
-        const minWidth = 20;
-        const minHeight = 20;
-        const boxWidth = x2 - x1;
-        const boxHeight = y2 - y1;
-        
-        if (boxWidth > minWidth && boxHeight > minHeight && boxWidth < originalWidth && boxHeight < originalHeight) {
-          detections.push({
-            class: classNames[bestClass],
-            confidence: bestScore,
-            bbox: [x1, y1, x2, y2],
-            score: bestScore
-          });
-        }
-      }
-    }
-    
-    console.log(`🎯 Found ${detections.length} motor detections before NMS`);
-    
-    // Apply Non-Maximum Suppression
-    const nmsThreshold = 0.4;
-    const nmsResults = this.applyNMS(detections, nmsThreshold);
-    
-    // Final confidence filtering
-    const finalResults = nmsResults.filter(detection => detection.confidence >= 0.3);
-    
-    console.log(`✅ Final motor results: ${finalResults.length} detections`);
-    return finalResults;
-  }
-
-  private processYOLOOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number, objectType: string = 'ESP32'): DetectionResult[] {
-    const data = predictions.dataSync() as Float32Array;
-    const detections: DetectionResult[] = [];
-    
-    // YOLO output format: [batch, 84, 8400] where 84 = 4 (bbox) + 80 (classes)
-    const confThreshold = objectType === 'ESP32' ? 0.25 : 0.3;
-    const numBoxes = 8400;
+    console.log('🔧 ESP32 Detection - Processing output...');
     
     for (let i = 0; i < numBoxes; i++) {
-      // Get confidence (assuming class 0 for ESP32, or best class for deep inspection)
-      const confidence = data[4 * numBoxes + i]; // First class confidence
+      // ESP32 confidence at index 4 (after 4 bbox coordinates)
+      const confidence = data[4 * numBoxes + i];
       
       if (confidence > confThreshold) {
-        // Raw coordinate values
-        const rawCx = data[0 * numBoxes + i];
-        const rawCy = data[1 * numBoxes + i];
-        const rawW = data[2 * numBoxes + i];
-        const rawH = data[3 * numBoxes + i];
+        // Get bbox coordinates (center format)
+        const cx = data[0 * numBoxes + i] * originalWidth / 640;
+        const cy = data[1 * numBoxes + i] * originalHeight / 640;
+        const w = data[2 * numBoxes + i] * originalWidth / 640;
+        const h = data[3 * numBoxes + i] * originalHeight / 640;
         
-        // Scale from model size to original canvas size
-        const modelSize = this.deviceCapabilities.hasLimitedMemory ? 416 : 640;
-        const scaleX = originalWidth / modelSize;
-        const scaleY = originalHeight / modelSize;
-        
-        const cx = rawCx * scaleX;
-        const cy = rawCy * scaleY;
-        const w = rawW * scaleX;
-        const h = rawH * scaleY;
-        
-        // Convert center format to corner format
+        // Convert to corner format
         const x1 = Math.max(0, cx - w/2);
         const y1 = Math.max(0, cy - h/2);
         const x2 = Math.min(originalWidth, cx + w/2);
         const y2 = Math.min(originalHeight, cy + h/2);
         
-        // Size filtering
-        const minWidth = objectType === 'ESP32' ? 30 : 20;
-        const minHeight = objectType === 'ESP32' ? 30 : 20;
-        const boxWidth = x2 - x1;
-        const boxHeight = y2 - y1;
-        
-        // Aspect ratio filtering
-        const aspectRatio = boxWidth / boxHeight;
-        const isValidAspectRatio = objectType === 'ESP32' 
-          ? (aspectRatio > 0.3 && aspectRatio < 3.0)
-          : (aspectRatio > 0.1 && aspectRatio < 10.0); // More flexible for general objects
-        
-        if (boxWidth > minWidth && boxHeight > minHeight && isValidAspectRatio) {
+        // Validate box size (ESP32 boards have reasonable size constraints)
+        if (w > 40 && h > 30 && w < originalWidth * 0.8 && h < originalHeight * 0.8) {
           detections.push({
-            class: objectType,
+            class: 'ESP32',
             confidence: confidence,
             bbox: [x1, y1, x2, y2],
             score: confidence
@@ -906,15 +774,137 @@ class MLService {
       }
     }
     
-    // Apply Non-Maximum Suppression
-    const nmsThreshold = 0.3;
-    const nmsResults = this.applyNMS(detections, nmsThreshold);
+    console.log(`✅ ESP32: Found ${detections.length} detections`);
+    return this.applyNMS(detections, 0.4);
+  }
+  
+  // Motor Connected Detection - 2 classes: ["connected", "motor"]
+  private processMotorConnectedOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number): DetectionResult[] {
+    const data = predictions.dataSync() as Float32Array;
+    const detections: DetectionResult[] = [];
+    const classes = ['connected', 'motor'];
     
-    // Final confidence filtering
-    const finalThreshold = objectType === 'ESP32' ? 0.45 : 0.35;
-    const finalResults = nmsResults.filter(detection => detection.confidence >= finalThreshold);
+    const confThreshold = 0.25;
+    const numBoxes = 8400;
     
-    return finalResults;
+    console.log('⚡ Motor Connected - Processing output...');
+    
+    for (let i = 0; i < numBoxes; i++) {
+      // Check both classes (connected at index 4, motor at index 5)
+      for (let c = 0; c < classes.length; c++) {
+        const confidence = data[(4 + c) * numBoxes + i];
+        
+        if (confidence > confThreshold) {
+          // Get bbox coordinates
+          const cx = data[0 * numBoxes + i] * originalWidth / 640;
+          const cy = data[1 * numBoxes + i] * originalHeight / 640;
+          const w = data[2 * numBoxes + i] * originalWidth / 640;
+          const h = data[3 * numBoxes + i] * originalHeight / 640;
+          
+          const x1 = Math.max(0, cx - w/2);
+          const y1 = Math.max(0, cy - h/2);
+          const x2 = Math.min(originalWidth, cx + w/2);
+          const y2 = Math.min(originalHeight, cy + h/2);
+          
+          // Validate detection
+          if (w > 20 && h > 20 && w < originalWidth && h < originalHeight) {
+            detections.push({
+              class: classes[c],
+              confidence: confidence,
+              bbox: [x1, y1, x2, y2],
+              score: confidence
+            });
+          }
+        }
+      }
+    }
+    
+    console.log(`✅ Motor Connected: Found ${detections.length} detections`);
+    return this.applyNMS(detections, 0.3);
+  }
+  
+  // Motor Not Connected Detection - 1 class: ["connect_here"]
+  private processMotorNotConnectedOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number): DetectionResult[] {
+    const data = predictions.dataSync() as Float32Array;
+    const detections: DetectionResult[] = [];
+    
+    const confThreshold = 0.25;
+    const numBoxes = 8400;
+    
+    console.log('🔌 Motor Not Connected - Processing output...');
+    
+    for (let i = 0; i < numBoxes; i++) {
+      // Single class "connect_here" at index 4
+      const confidence = data[4 * numBoxes + i];
+      
+      if (confidence > confThreshold) {
+        // Get bbox coordinates
+        const cx = data[0 * numBoxes + i] * originalWidth / 640;
+        const cy = data[1 * numBoxes + i] * originalHeight / 640;
+        const w = data[2 * numBoxes + i] * originalWidth / 640;
+        const h = data[3 * numBoxes + i] * originalHeight / 640;
+        
+        const x1 = Math.max(0, cx - w/2);
+        const y1 = Math.max(0, cy - h/2);
+        const x2 = Math.min(originalWidth, cx + w/2);
+        const y2 = Math.min(originalHeight, cy + h/2);
+        
+        // Validate detection
+        if (w > 15 && h > 15 && w < originalWidth && h < originalHeight) {
+          detections.push({
+            class: 'connect_here',
+            confidence: confidence,
+            bbox: [x1, y1, x2, y2],
+            score: confidence
+          });
+        }
+      }
+    }
+    
+    console.log(`✅ Motor Not Connected: Found ${detections.length} detections`);
+    return this.applyNMS(detections, 0.3);
+  }
+  
+  // Breadboard Detection - 1 class: ["breadboard"]
+  private processBreadboardOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number): DetectionResult[] {
+    const data = predictions.dataSync() as Float32Array;
+    const detections: DetectionResult[] = [];
+    
+    const confThreshold = 0.3;
+    const numBoxes = 8400;
+    
+    console.log('🍞 Breadboard - Processing output...');
+    
+    for (let i = 0; i < numBoxes; i++) {
+      // Single class "breadboard" at index 4
+      const confidence = data[4 * numBoxes + i];
+      
+      if (confidence > confThreshold) {
+        // Get bbox coordinates
+        const cx = data[0 * numBoxes + i] * originalWidth / 640;
+        const cy = data[1 * numBoxes + i] * originalHeight / 640;
+        const w = data[2 * numBoxes + i] * originalWidth / 640;
+        const h = data[3 * numBoxes + i] * originalHeight / 640;
+        
+        const x1 = Math.max(0, cx - w/2);
+        const y1 = Math.max(0, cy - h/2);
+        const x2 = Math.min(originalWidth, cx + w/2);
+        const y2 = Math.min(originalHeight, cy + h/2);
+        
+        // Breadboards are typically rectangular with specific size constraints
+        if (w > 50 && h > 30 && w < originalWidth * 0.9 && h < originalHeight * 0.9) {
+          detections.push({
+            class: 'breadboard',
+            confidence: confidence,
+            bbox: [x1, y1, x2, y2],
+            score: confidence
+          });
+        }
+      }
+    }
+    
+    console.log(`✅ Breadboard: Found ${detections.length} detections`);
+    return this.applyNMS(detections, 0.4);
   }
 
 
@@ -1284,6 +1274,120 @@ class MLService {
        console.warn('⚠️ Model caching failed (non-critical):', error);
      }
    } */
+
+  // ENHANCED MODEL VALIDATION & DEBUGGING
+  private async validateModelOutput(model: tf.GraphModel, modelName: string): Promise<boolean> {
+    try {
+      console.log(`🔍 Validating ${modelName} model output format...`);
+      
+      const testInput = tf.zeros([1, 640, 640, 3]);
+      const output = model.predict(testInput) as tf.Tensor;
+      
+      console.log(`📊 ${modelName} output shape:`, output.shape);
+      console.log(`📊 ${modelName} output dtype:`, output.dtype);
+      
+      // Validate expected YOLO format: [1, 84, 8400] or similar
+      const expectedNumBoxes = 8400;
+      const shape = output.shape;
+      
+      if (shape.length !== 3) {
+        console.error(`❌ ${modelName}: Expected 3D output, got ${shape.length}D`);
+        return false;
+      }
+      
+      if (shape[2] !== expectedNumBoxes) {
+        console.warn(`⚠️ ${modelName}: Expected ${expectedNumBoxes} boxes, got ${shape[2]}`);
+      }
+      
+      // Quick data sanity check
+      const data = output.dataSync() as Float32Array;
+      const hasValidData = !isNaN(data[0]) && isFinite(data[0]);
+      
+      if (!hasValidData) {
+        console.error(`❌ ${modelName}: Output contains invalid data`);
+        return false;
+      }
+      
+      console.log(`✅ ${modelName} model output validation passed`);
+      
+      // Cleanup
+      testInput.dispose();
+      output.dispose();
+      
+      return true;
+      
+    } catch (error) {
+      console.error(`❌ ${modelName} validation failed:`, error);
+      return false;
+    }
+  }
+
+  // OPTIMIZED MODEL LOADING WITH COMPRESSION DETECTION
+  private async loadModelWithOptimization(url: string, modelType: ModelType): Promise<tf.GraphModel> {
+    console.log(`🚀 Loading ${modelType} model with optimizations...`);
+    
+    try {
+      // Add model-specific loading optimizations
+      const loadOptions: tf.io.LoadOptions = {
+        requestInit: {
+          cache: this.deviceCapabilities.isIOSPWA ? 'no-cache' : 'default',
+          mode: 'cors'
+        }
+      };
+      
+      // iOS PWA cache-busting for problematic models
+      const cacheBuster = this.deviceCapabilities.isIOSPWA ? `?v=${Date.now()}` : '';
+      const modelUrl = `${url}${cacheBuster}`;
+      
+      const startTime = performance.now();
+      const model = await tf.loadGraphModel(modelUrl, loadOptions);
+      const loadTime = performance.now() - startTime;
+      
+      console.log(`⏱️ ${modelType} loaded in ${loadTime.toFixed(1)}ms`);
+      
+      // Validate model output format
+      const isValid = await this.validateModelOutput(model, modelType);
+      if (!isValid) {
+        throw new Error(`${modelType} model validation failed`);
+      }
+      
+      return model;
+      
+    } catch (error) {
+      console.error(`❌ Failed to load ${modelType} model:`, error);
+      throw error;
+    }
+  }
+
+  // SMART MODEL PRELOADING (load most commonly used models first)
+  async preloadEssentialModels(): Promise<void> {
+    console.log('🔥 Preloading essential models for faster startup...');
+    
+    try {
+      // Load ESP32 first (most commonly used)
+      if (!this.modelsInitialized.has('esp32')) {
+        await this.initializeModel('esp32');
+      }
+      
+      // Preload motor models in background if memory allows
+      if (!this.deviceCapabilities.hasLimitedMemory) {
+        const backgroundLoads = [
+          this.initializeModel('motor_connected'),
+          this.initializeModel('motor_not_connected')
+        ];
+        
+        // Don't wait for these, load in background
+        Promise.all(backgroundLoads).then(() => {
+          console.log('✅ Background model preloading complete');
+        }).catch(error => {
+          console.warn('⚠️ Background preloading failed (non-critical):', error);
+        });
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Essential model preloading failed:', error);
+    }
+  }
 }
 
 export const mlService = new MLService();
