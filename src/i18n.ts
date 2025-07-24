@@ -4,7 +4,7 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   en: {
     translation: {
-      title: "AI Visual Inspector",
+      title: "AI Advanced Vision System",
       subtitle: "AI-powered visual inspection platform",
       features: {
         assembly: "Assembly Verification",
@@ -48,9 +48,9 @@ const resources = {
         welcome: "Next-Generation AI Vision Platform",
         description: "Experience the convergence of cutting-edge technologies - where Artificial Intelligence meets Computer Vision, Machine Learning fuses with Augmented Reality, and Deep Neural Networks power real-time industrial inspection. Built for the future of intelligent automation with precision that exceeds human capability.",
         techHighlights: {
-          ai: "Neural AI",
-          cv: "Computer Vision",
-          ar: "AR Integration"
+          ar: "Augmented Reality",
+          ai: "AI",
+          cv: "Computer Vision/Machine Learning"
         },
         badges: {
           realtime: "Real-time Inference",
@@ -133,7 +133,7 @@ const resources = {
   },
   ar: {
     translation: {
-      title: "نظام الرؤية الحاسوبية والذكاء الاصطناعي",
+      title: "نظام الرؤية المتقدم بالذكاء الاصطناعي",
       subtitle: "منصة الفحص البصري المدعومة بالذكاء الاصطناعي",
       features: {
         assembly: "التحقق من التجميع",
@@ -177,9 +177,9 @@ const resources = {
         welcome: "منصة الرؤية الذكية للجيل القادم", 
         description: "اختبر تلاقي التقنيات المتطورة - حيث يلتقي الذكاء الاصطناعي مع الرؤية الحاسوبية، ويندمج التعلم الآلي مع الواقع المعزز، وتُشغل الشبكات العصبية العميقة الفحص الصناعي الفوري. مُصمم لمستقبل الأتمتة الذكية بدقة تفوق القدرة البشرية.",
         techHighlights: {
-          ai: "الذكاء العصبي",
-          cv: "الرؤية الحاسوبية", 
-          ar: "تكامل الواقع المعزز"
+          ar: "الواقع المعزز",
+          ai: "الذكاء الاصطناعي",
+          cv: "الرؤية الحاسوبية/التعلم الآلي"
         },
         badges: {
           realtime: "الاستنتاج الفوري",

@@ -677,7 +677,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       <div className="App">
         <div className="completion-screen">
           <div className="completion-content">
-            <div className="completion-icon">✅</div>
+            <div className="completion-icon"></div>
             <h2>{t('completion.title')}</h2>
             <p>{t('completion.message')}</p>
             <button className="btn btn-primary" onClick={() => setShowCompletion(false)}>
@@ -717,47 +717,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             </div>
           </section>
 
-          {/* Status Section with iOS PWA Info */}
-          <section className="status-section">
-            <div className="status-card">
-              <h3>📱 {isIOSPWA ? 'iOS PWA Optimized' : 'Multi-Model AI Platform'}</h3>
-              <p>
-                {isIOSPWA 
-                  ? 'Optimized for iPhone Safari PWA with advanced memory management and WebGL acceleration.'
-                  : 'Advanced computer vision with specialized models for assembly verification and deep inspection analysis.'
-                }
-              </p>
-              <div className="tech-stack">
-                {isIOSPWA && <span className="tech-badge">iOS PWA</span>}
-                <span className="tech-badge">ESP32 Detection</span>
-                <span className="tech-badge">Deep Inspection</span>
-                <span className="tech-badge">Real-time AI</span>
-                {deviceCapabilities.supportsWebGL && <span className="tech-badge">WebGL</span>}
-                {deviceCapabilities.isLowEnd && <span className="tech-badge">Power Optimized</span>}
-              </div>
-              
-              {/* iOS PWA Performance Stats */}
-              {isIOSPWA && performanceStats && (
-                <div className="performance-stats">
-                  <h4>Performance Status</h4>
-                  <div className="stats-grid">
-                    <div className="stat-item">
-                      <span className="stat-label">Memory</span>
-                      <span className="stat-value">{performanceStats.memory.memoryMB}MB</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Mode</span>
-                      <span className="stat-value">{performanceStats.device.performanceMode}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Models</span>
-                      <span className="stat-value">{performanceStats.inference.modelsLoaded.length}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
+
         </>
       )}
 
@@ -769,18 +729,18 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               ← {t('actions.back')}
             </button>
             <h1 className="page-title">
-              {activeFeature === 'assembly' && '🔧 ' + t('features.assembly')}
-              {activeFeature === 'inspection' && '🔍 ' + t('features.inspection')}
-              {activeFeature === 'repair' && '🛠️ ' + t('features.repair')}
-              {activeFeature === 'maintenance' && '⚙️ ' + t('features.maintenance')}
-              {activeFeature === 'quality' && '✓ ' + t('features.quality')}
+              {activeFeature === 'assembly' && t('features.assembly')}
+              {activeFeature === 'inspection' && t('features.inspection')}
+              {activeFeature === 'repair' && t('features.repair')}
+              {activeFeature === 'maintenance' && t('features.maintenance')}
+              {activeFeature === 'quality' && t('features.quality')}
             </h1>
           </div>
 
           {/* Error Display */}
           {error && (
             <div className="error-message">
-              <div className="error-icon">⚠️</div>
+              <div className="error-icon"></div>
               <div className="error-content">
                 <h4>{t('camera.error')}</h4>
                 <p>{error}</p>
@@ -803,7 +763,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               {/* Camera placeholder */}
               <div className={`camera-placeholder ${isPlaying ? 'hidden' : ''}`}>
                 <div className="placeholder-content">
-                  <div className="camera-icon">📷</div>
+                  <div className="camera-icon"></div>
                   <h3>{t('camera.start')}</h3>
                   <p>{isIOSPWA ? 'Tap to start camera (iOS PWA optimized)' : t('camera.placeholder')}</p>
                   {/* iOS PWA specific hints */}
@@ -820,7 +780,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                   onClick={startCamera}
                   disabled={isPlaying}
                 >
-                  📱 {isIOSPWA ? 'Start iOS Camera' : t('camera.start')}
+                  {isIOSPWA ? 'Start iOS Camera' : t('camera.start')}
                 </button>
               </div>
 
@@ -872,27 +832,27 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                     <>
                       {/* Assembly Model Selection */}
                       <div className="assembly-model-selector">
-                        <h4>🔧 Select Assembly Model:</h4>
+                        <h4>Select Assembly Model:</h4>
                         <div className="model-buttons">
                           <button 
                             className={`btn model-btn ${activeAssemblyModel === 'motor_not_connected' ? 'btn-primary active' : 'btn-secondary'}`}
                             onClick={() => setActiveAssemblyModel('motor_not_connected')}
                           >
-                            🔌 Step 1: Connection Points
+                            Step 1: Connection Points
                           </button>
                           
                           <button 
                             className={`btn model-btn ${activeAssemblyModel === 'motor_connected' ? 'btn-primary active' : 'btn-secondary'}`}
                             onClick={() => setActiveAssemblyModel('motor_connected')}
                           >
-                            ⚡ Step 2: Motor Detection
+                            Step 2: Motor Detection
                           </button>
                           
                           <button 
                             className={`btn model-btn ${activeAssemblyModel === 'esp32' ? 'btn-primary active' : 'btn-secondary'}`}
                             onClick={() => setActiveAssemblyModel('esp32')}
                           >
-                            🔧 Step 3: ESP32 Board
+                            Step 3: ESP32 Board
                           </button>
                         </div>
                       </div>
@@ -903,38 +863,38 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                           <h4>📊 Assembly Progress:</h4>
                           <div className="progress-steps">
                             <div className={`progress-step ${assemblyProgress.step1_connections > 0 ? 'completed' : assemblyProgress.currentStep === 1 ? 'active' : 'pending'}`}>
-                              <div className="step-icon">🔌</div>
+                              <div className="step-icon"></div>
                               <div className="step-info">
                                 <span className="step-title">Step 1: Connection Points</span>
                                 <span className="step-status">
                                   {assemblyProgress.step1_connections > 0 
-                                    ? `✅ ${assemblyProgress.step1_connections} connection points detected` 
+                                    ? `${assemblyProgress.step1_connections} connection points detected` 
                                     : 'Waiting for connection points...'}
                                 </span>
                               </div>
                             </div>
 
                             <div className={`progress-step ${assemblyProgress.step2_motors === 4 ? 'completed' : assemblyProgress.step2_motors > 0 ? 'active' : 'pending'}`}>
-                              <div className="step-icon">⚡</div>
+                              <div className="step-icon"></div>
                               <div className="step-info">
                                 <span className="step-title">Step 2: Motor Installation</span>
                                 <span className="step-status">
                                   {assemblyProgress.step2_motors === 4 
-                                    ? '✅ All 4 motors detected!' 
+                                    ? 'All 4 motors detected!' 
                                     : assemblyProgress.step2_motors > 0 
-                                      ? `⚠️ ${assemblyProgress.step2_motors}/4 motors - ${4 - assemblyProgress.step2_motors} missing`
+                                      ? `${assemblyProgress.step2_motors}/4 motors - ${4 - assemblyProgress.step2_motors} missing`
                                       : 'Waiting for motors...'}
                                 </span>
                               </div>
                             </div>
 
                             <div className={`progress-step ${assemblyProgress.step3_esp32 ? 'completed' : assemblyProgress.currentStep === 3 ? 'active' : 'pending'}`}>
-                              <div className="step-icon">🔧</div>
+                              <div className="step-icon"></div>
                               <div className="step-info">
                                 <span className="step-title">Step 3: ESP32 Board</span>
                                 <span className="step-status">
                                   {assemblyProgress.step3_esp32 
-                                    ? '✅ ESP32 board detected!' 
+                                    ? 'ESP32 board detected!' 
                                     : 'Waiting for ESP32 board...'}
                                 </span>
                               </div>
@@ -970,7 +930,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                         onClick={toggleAssemblyRealtimeDetection}
                         disabled={!activeAssemblyModel}
                       >
-                        {isAssemblyRealtimeActive ? '⏹️ Stop Detection' : `▶️ Start ${activeAssemblyModel ? activeAssemblyModel.replace('_', ' ').replace('motor ', 'Motor ').replace('not connected', 'Connection Points').replace('connected', 'Detection').replace('esp32', 'ESP32') : ''} Detection`}
+                        {isAssemblyRealtimeActive ? 'Stop Detection' : `Start ${activeAssemblyModel ? activeAssemblyModel.replace('_', ' ').replace('motor ', 'Motor ').replace('not connected', 'Connection Points').replace('connected', 'Detection').replace('esp32', 'ESP32') : ''} Detection`}
                       </button>
                       {isIOSPWA && isAssemblyRealtimeActive && (
                         <div className="ios-performance-hint">
@@ -984,7 +944,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                         className={`btn ${isInspectionRealtimeActive ? 'btn-danger' : 'btn-primary'}`}
                         onClick={toggleInspectionRealtimeDetection}
                       >
-                        {isInspectionRealtimeActive ? '⏹️ Stop Motor Detection' : '🔌 Start Motor Detection'}
+                        {isInspectionRealtimeActive ? 'Stop Motor Detection' : 'Start Motor Detection'}
                       </button>
                       {isIOSPWA && isInspectionRealtimeActive && (
                         <div className="ios-performance-hint">
@@ -997,7 +957,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                       className="btn btn-primary"
                       onClick={() => console.log('Feature not implemented yet')}
                     >
-                      🤖 {t('actions.analyze')}
+                      {t('actions.analyze')}
                     </button>
                   )}
 
@@ -1015,7 +975,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             {activeFeature === 'assembly' && isAssemblyRealtimeActive && (
               <div className="detection-panel">
                 <div className="panel-header">
-                  <h3>🔧 ESP32 Assembly Detection</h3>
+                  <h3>ESP32 Assembly Detection</h3>
                   <div className="panel-stats">
                     <span className="stat">FPS: {assemblyFPS}</span>
                     <span className="stat">Detections: {assemblyDetections.length}</span>
@@ -1043,7 +1003,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                   </div>
                 ) : (
                   <div className="no-detections">
-                    <p>🔍 Looking for ESP32 components...</p>
+                    <p>Looking for ESP32 components...</p>
                     <p className="hint">Point camera at ESP32 boards or components</p>
                     {isIOSPWA && <p className="hint">iOS PWA optimized for best performance</p>}
                   </div>
@@ -1055,7 +1015,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             {activeFeature === 'inspection' && isInspectionRealtimeActive && (
               <div className="detection-panel">
                 <div className="panel-header">
-                  <h3>🔌 Motor Connection Analysis</h3>
+                  <h3>Motor Connection Analysis</h3>
                   <div className="panel-stats">
                     <span className="stat">Status: Disabled</span>
                     <span className="stat">Model: Not Configured</span>
@@ -1070,7 +1030,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                     <div 
                       className="status-indicator unknown"
                     >
-                      🚫 Feature Disabled
+                      Feature Disabled
                     </div>
                   </div>
                   
@@ -1097,7 +1057,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                     </div>
                   ) : (
                     <div className="no-detections">
-                      <span>🚫 Deep Inspection Disabled - No Model Configured</span>
+                      <span>Deep Inspection Disabled - No Model Configured</span>
                     </div>
                   )}
                 </div>
