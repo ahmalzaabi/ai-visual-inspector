@@ -404,12 +404,9 @@ class MLService {
   }
 
   async detectMotorConnection(canvas: HTMLCanvasElement): Promise<MotorAnalysis> {
-    // Initialize motor models if needed
+    // SIMPLIFIED: Test with only motor_connected model first
     if (!this.modelsInitialized.has('motor_connected')) {
       await this.initializeModel('motor_connected');
-    }
-    if (!this.modelsInitialized.has('motor_not_connected')) {
-      await this.initializeModel('motor_not_connected');
     }
 
     // iOS PWA: Frame rate limiting
@@ -426,10 +423,9 @@ class MLService {
     const startTime = performance.now();
     let inputTensor: tf.Tensor | null = null;
     let connectedPredictions: tf.Tensor | null = null;
-    let notConnectedPredictions: tf.Tensor | null = null;
 
     try {
-      // 1. Preprocess image for both models
+      // 1. Preprocess image
       const preprocessStart = performance.now();
       inputTensor = tf.tidy(() => {
         const targetSize = 640;
@@ -440,62 +436,44 @@ class MLService {
       });
       
       const preprocessTime = performance.now() - preprocessStart;
+      console.log('📸 Input tensor created:', inputTensor.shape);
 
-      // 2. Run inference on both motor models
+      // 2. Run inference on ONLY motor_connected model for testing
       const inferenceStart = performance.now();
-      console.log('🔌 Running motor detection inference...');
+      console.log('🔌 Running motor_connected model inference...');
       connectedPredictions = this.motorConnectedModel!.predict(inputTensor) as tf.Tensor;
-      notConnectedPredictions = this.motorNotConnectedModel!.predict(inputTensor) as tf.Tensor;
-      console.log('📊 Motor predictions shapes:', {
-        connected: connectedPredictions.shape,
-        notConnected: notConnectedPredictions.shape
-      });
+      console.log('📊 Motor_connected predictions shape:', connectedPredictions.shape);
+      console.log('📊 Raw prediction data sample:', Array.from(connectedPredictions.dataSync().slice(0, 10)));
       const inferenceTime = performance.now() - inferenceStart;
 
-      // 3. Process results from both models with correct class names
+      // 3. Process results with detailed debugging
       const postprocessStart = performance.now();
+      console.log('🔍 Processing motor_connected model with classes: ["connected", "motor"]');
       const connectedDetections = this.processMotorYOLOOutput(connectedPredictions, canvas.width, canvas.height, ['connected', 'motor']);
-      const notConnectedDetections = this.processMotorYOLOOutput(notConnectedPredictions, canvas.width, canvas.height, ['connect_here']);
       const postprocessTime = performance.now() - postprocessStart;
       
-      console.log('🎯 Motor detection results:', {
-        connected: connectedDetections.length,
-        notConnected: notConnectedDetections.length
+      console.log('🎯 Motor_connected detection results:', {
+        detections: connectedDetections.length,
+        detectedObjects: connectedDetections.map(d => ({ class: d.class, confidence: d.confidence.toFixed(3) }))
       });
 
       const totalTime = performance.now() - startTime;
 
-      // Determine connection status based on detections
+      // SIMPLIFIED: Just use connected model results for now
       let connectionStatus: 'connected' | 'not_connected' | 'unknown' = 'unknown';
-      let allDetections: DetectionResult[] = [];
       let confidence = 0;
 
-      if (connectedDetections.length > 0 && notConnectedDetections.length === 0) {
+      if (connectedDetections.length > 0) {
+        // If we detect anything, consider it "connected" for testing
         connectionStatus = 'connected';
-        allDetections = connectedDetections;
         confidence = Math.max(...connectedDetections.map(d => d.confidence));
-      } else if (notConnectedDetections.length > 0 && connectedDetections.length === 0) {
-        connectionStatus = 'not_connected';
-        allDetections = notConnectedDetections;
-        confidence = Math.max(...notConnectedDetections.map(d => d.confidence));
-      } else if (connectedDetections.length > 0 && notConnectedDetections.length > 0) {
-        // Both detected, use higher confidence
-        const connectedConf = Math.max(...connectedDetections.map(d => d.confidence));
-        const notConnectedConf = Math.max(...notConnectedDetections.map(d => d.confidence));
-        
-        if (connectedConf > notConnectedConf) {
-          connectionStatus = 'connected';
-          allDetections = connectedDetections;
-          confidence = connectedConf;
-        } else {
-          connectionStatus = 'not_connected';
-          allDetections = notConnectedDetections;
-          confidence = notConnectedConf;
-        }
+        console.log('✅ DETECTED MOTOR CONNECTION:', { status: connectionStatus, confidence });
+      } else {
+        console.log('❌ NO MOTOR DETECTION found');
       }
 
       const result: MotorAnalysis = {
-        detections: allDetections,
+        detections: connectedDetections,
         confidence,
         processingTime: totalTime,
         connectionStatus,
@@ -524,7 +502,6 @@ class MLService {
       // Clean up tensors
       if (inputTensor) inputTensor.dispose();
       if (connectedPredictions) connectedPredictions.dispose();
-      if (notConnectedPredictions) notConnectedPredictions.dispose();
       this.cleanupTempTensors();
     }
   }
@@ -734,22 +711,28 @@ class MLService {
     const numBoxes = 8400;
     const numClasses = classNames.length;
     
-    console.log(`🔍 Processing motor YOLO output: ${data.length} values, looking for classes:`, classNames);
-    
-    for (let i = 0; i < numBoxes; i++) {
-      let bestClass = -1;
-      let bestScore = 0;
-      
-      // Check all possible classes for this model
-      for (let c = 0; c < Math.min(numClasses, 80); c++) {
-        const classScore = data[(4 + c) * numBoxes + i]; // Skip 4 bbox values
-        if (classScore > bestScore) {
-          bestScore = classScore;
-          bestClass = c;
-        }
-      }
-      
-      if (bestScore > confThreshold && bestClass >= 0 && bestClass < classNames.length) {
+         console.log(`🔍 Processing motor YOLO output: ${data.length} values, looking for classes:`, classNames);
+     console.log(`📊 YOLO format check - First 20 values:`, Array.from(data.slice(0, 20)));
+     
+     for (let i = 0; i < numBoxes; i++) {
+       let bestClass = -1;
+       let bestScore = 0;
+       
+       // Check all possible classes for this model - try first few classes
+       for (let c = 0; c < Math.min(numClasses, 10); c++) {
+         const classScore = data[(4 + c) * numBoxes + i]; // Skip 4 bbox values
+         if (classScore > bestScore) {
+           bestScore = classScore;
+           bestClass = c;
+         }
+       }
+       
+       // Also try checking raw confidence for debugging
+       if (i < 10) { // Debug first 10 boxes
+         console.log(`📦 Box ${i}: bbox=[${data[0*numBoxes+i]?.toFixed(3)}, ${data[1*numBoxes+i]?.toFixed(3)}, ${data[2*numBoxes+i]?.toFixed(3)}, ${data[3*numBoxes+i]?.toFixed(3)}], class0=${data[4*numBoxes+i]?.toFixed(3)}, class1=${data[5*numBoxes+i]?.toFixed(3)}, bestScore=${bestScore.toFixed(3)}`);
+       }
+       
+       if (bestScore > confThreshold && bestClass >= 0 && bestClass < classNames.length) {
         // Raw coordinate values
         const rawCx = data[0 * numBoxes + i];
         const rawCy = data[1 * numBoxes + i];
