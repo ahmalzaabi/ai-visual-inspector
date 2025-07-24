@@ -452,10 +452,10 @@ class MLService {
       });
       const inferenceTime = performance.now() - inferenceStart;
 
-      // 3. Process results from both models
+      // 3. Process results from both models with correct class names
       const postprocessStart = performance.now();
-      const connectedDetections = this.processYOLOOutput(connectedPredictions, canvas.width, canvas.height, 'Motor');
-      const notConnectedDetections = this.processYOLOOutput(notConnectedPredictions, canvas.width, canvas.height, 'Motor');
+      const connectedDetections = this.processMotorYOLOOutput(connectedPredictions, canvas.width, canvas.height, ['connected', 'motor']);
+      const notConnectedDetections = this.processMotorYOLOOutput(notConnectedPredictions, canvas.width, canvas.height, ['connect_here']);
       const postprocessTime = performance.now() - postprocessStart;
       
       console.log('🎯 Motor detection results:', {
@@ -723,6 +723,83 @@ class MLService {
   // Legacy method for backward compatibility
   async detectESP32(canvas: HTMLCanvasElement): Promise<ESP32Analysis> {
     return this.detectESP32Assembly(canvas);
+  }
+
+  private processMotorYOLOOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number, classNames: string[]): DetectionResult[] {
+    const data = predictions.dataSync() as Float32Array;
+    const detections: DetectionResult[] = [];
+    
+    // YOLO output format: [batch, 84, 8400] where 84 = 4 (bbox) + 80 (classes)
+    const confThreshold = 0.25;
+    const numBoxes = 8400;
+    const numClasses = classNames.length;
+    
+    console.log(`🔍 Processing motor YOLO output: ${data.length} values, looking for classes:`, classNames);
+    
+    for (let i = 0; i < numBoxes; i++) {
+      let bestClass = -1;
+      let bestScore = 0;
+      
+      // Check all possible classes for this model
+      for (let c = 0; c < Math.min(numClasses, 80); c++) {
+        const classScore = data[(4 + c) * numBoxes + i]; // Skip 4 bbox values
+        if (classScore > bestScore) {
+          bestScore = classScore;
+          bestClass = c;
+        }
+      }
+      
+      if (bestScore > confThreshold && bestClass >= 0 && bestClass < classNames.length) {
+        // Raw coordinate values
+        const rawCx = data[0 * numBoxes + i];
+        const rawCy = data[1 * numBoxes + i];
+        const rawW = data[2 * numBoxes + i];
+        const rawH = data[3 * numBoxes + i];
+        
+        // Scale from model size to original canvas size
+        const modelSize = 640;
+        const scaleX = originalWidth / modelSize;
+        const scaleY = originalHeight / modelSize;
+        
+        const cx = rawCx * scaleX;
+        const cy = rawCy * scaleY;
+        const w = rawW * scaleX;
+        const h = rawH * scaleY;
+        
+        // Convert center format to corner format
+        const x1 = Math.max(0, cx - w/2);
+        const y1 = Math.max(0, cy - h/2);
+        const x2 = Math.min(originalWidth, cx + w/2);
+        const y2 = Math.min(originalHeight, cy + h/2);
+        
+        // Size filtering
+        const minWidth = 20;
+        const minHeight = 20;
+        const boxWidth = x2 - x1;
+        const boxHeight = y2 - y1;
+        
+        if (boxWidth > minWidth && boxHeight > minHeight && boxWidth < originalWidth && boxHeight < originalHeight) {
+          detections.push({
+            class: classNames[bestClass],
+            confidence: bestScore,
+            bbox: [x1, y1, x2, y2],
+            score: bestScore
+          });
+        }
+      }
+    }
+    
+    console.log(`🎯 Found ${detections.length} motor detections before NMS`);
+    
+    // Apply Non-Maximum Suppression
+    const nmsThreshold = 0.4;
+    const nmsResults = this.applyNMS(detections, nmsThreshold);
+    
+    // Final confidence filtering
+    const finalResults = nmsResults.filter(detection => detection.confidence >= 0.3);
+    
+    console.log(`✅ Final motor results: ${finalResults.length} detections`);
+    return finalResults;
   }
 
   private processYOLOOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number, objectType: string = 'ESP32'): DetectionResult[] {
