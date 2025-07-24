@@ -78,12 +78,12 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [assemblyDetections, setAssemblyDetections] = useState<any[]>([])
   const [assemblyFPS, setAssemblyFPS] = useState(0)
 
-  // Deep Inspection states
+  // Motor Detection states (replacing Deep Inspection)
   const [isInspectionRealtimeActive, setIsInspectionRealtimeActive] = useState(false)
   const [inspectionDetections, setInspectionDetections] = useState<any[]>([])
   const [inspectionFPS, setInspectionFPS] = useState(0)
-  const [qualityScore, setQualityScore] = useState(100)
-  const [defectTypes, setDefectTypes] = useState<string[]>([])
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'not_connected' | 'unknown'>('unknown')
+  const [motorConfidence, setMotorConfidence] = useState(0)
 
   // iOS PWA performance monitoring
   const [performanceStats, setPerformanceStats] = useState<any>(null)
@@ -331,9 +331,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     // Reset states
     setIsPlaying(false)
     setAssemblyDetections([])
-    setInspectionDetections([])
-    setQualityScore(100)
-    setDefectTypes([])
+            setInspectionDetections([])
+        setConnectionStatus('unknown')
+        setMotorConfidence(0)
     
     // Clear overlay
     if (overlayCanvasRef.current) {
@@ -379,7 +379,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           context.drawImage(video, 0, 0);
 
           const startTime = performance.now();
-          const result = await mlService.detectESP32Assembly(canvas);
+          const result = await mlService.detectBreadboard(canvas);
           const endTime = performance.now();
           const inferenceTime = endTime - startTime;
 
@@ -440,13 +440,13 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           context.drawImage(video, 0, 0);
 
           const startTime = performance.now();
-          const result = await mlService.detectDeepInspection(canvas);
+          const result = await mlService.detectMotorConnection(canvas);
           const endTime = performance.now();
           const inferenceTime = endTime - startTime;
 
           setInspectionDetections(result.detections);
-          setQualityScore(result.qualityScore);
-          setDefectTypes(result.defectTypes);
+          setConnectionStatus(result.connectionStatus);
+          setMotorConfidence(result.confidence);
           drawInspectionOverlay(overlayContext, result.detections, canvas.width, canvas.height);
           
           // iOS PWA: Adaptive FPS calculation
@@ -598,8 +598,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         cancelAnimationFrame(inspectionAnimationRef.current);
       }
       setInspectionDetections([]);
-      setQualityScore(100);
-      setDefectTypes([]);
+      setConnectionStatus('unknown');
+      setMotorConfidence(0);
       // Clear overlay
       if (overlayCanvasRef.current) {
         const overlayContext = overlayCanvasRef.current.getContext('2d');
@@ -854,11 +854,11 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                         className={`btn ${isInspectionRealtimeActive ? 'btn-danger' : 'btn-primary'}`}
                         onClick={toggleInspectionRealtimeDetection}
                       >
-                        {isInspectionRealtimeActive ? '⏹️ Stop Deep Inspection' : '🔍 Start Deep Inspection'}
+                        {isInspectionRealtimeActive ? '⏹️ Stop Motor Detection' : '🔌 Start Motor Detection'}
                       </button>
                       {isIOSPWA && isInspectionRealtimeActive && (
                         <div className="ios-performance-hint">
-                          <span className="hint">FPS: {inspectionFPS} | Quality: {qualityScore.toFixed(0)}%</span>
+                          <span className="hint">FPS: {inspectionFPS} | Status: {connectionStatus}</span>
                         </div>
                       )}
                     </>
@@ -925,43 +925,37 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             {activeFeature === 'inspection' && isInspectionRealtimeActive && (
               <div className="detection-panel">
                 <div className="panel-header">
-                  <h3>🔍 Deep Inspection Analysis</h3>
+                  <h3>🔌 Motor Connection Analysis</h3>
                   <div className="panel-stats">
                     <span className="stat">FPS: {inspectionFPS}</span>
-                    <span className="stat">Quality: {qualityScore.toFixed(0)}%</span>
+                    <span className="stat">Confidence: {(motorConfidence * 100).toFixed(0)}%</span>
                     {isIOSPWA && performanceStats && (
                       <span className="stat">Memory: {performanceStats.memory.memoryMB}MB</span>
                     )}
                   </div>
                 </div>
                 
-                <div className="quality-indicator">
-                  <div className="quality-bar">
+                <div className="connection-indicator">
+                  <div className="connection-status">
                     <div 
-                      className="quality-fill" 
+                      className={`status-indicator ${connectionStatus}`}
+                    ></div>
+                    <span className="status-label">
+                      {connectionStatus === 'connected' ? '✅ Motor Connected' : 
+                       connectionStatus === 'not_connected' ? '❌ Motor Not Connected' : 
+                       '❓ Checking Connection...'}
+                    </span>
+                  </div>
+                  <div className="confidence-bar">
+                    <div 
+                      className="confidence-fill" 
                       style={{ 
-                        width: `${qualityScore}%`,
-                        backgroundColor: qualityScore >= 80 ? '#10b981' : qualityScore >= 60 ? '#f59e0b' : '#ef4444'
+                        width: `${motorConfidence * 100}%`,
+                        backgroundColor: motorConfidence >= 0.8 ? '#10b981' : motorConfidence >= 0.5 ? '#f59e0b' : '#ef4444'
                       }}
                     ></div>
                   </div>
-                  <span className="quality-label">
-                    {qualityScore >= 80 ? 'Excellent' : qualityScore >= 60 ? 'Good' : 'Needs Attention'}
-                  </span>
                 </div>
-
-                {defectTypes.length > 0 && (
-                  <div className="defect-types">
-                    <h4>Detected Issues:</h4>
-                    <div className="defect-badges">
-                      {defectTypes.slice(0, isIOSPWA ? 4 : 6).map((defect, index) => (
-                        <span key={index} className="defect-badge">
-                          {defect}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 
                 {inspectionDetections.length > 0 ? (
                   <div className="detections-grid">

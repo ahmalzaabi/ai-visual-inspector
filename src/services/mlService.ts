@@ -35,7 +35,19 @@ export interface DeepInspectionAnalysis {
   };
 }
 
-export type ModelType = 'esp32' | 'deep_inspection';
+export interface MotorAnalysis {
+  detections: DetectionResult[];
+  confidence: number;
+  processingTime: number;
+  connectionStatus: 'connected' | 'not_connected' | 'unknown';
+  performance: {
+    preprocessing: number;
+    inference: number;
+    postprocessing: number;
+  };
+}
+
+export type ModelType = 'esp32' | 'breadboard' | 'motor_connected' | 'motor_not_connected';
 
 // iOS PWA Detection
 const isIOSPWA = () => {
@@ -67,13 +79,15 @@ const getDeviceCapabilities = () => {
 
 class MLService {
   private esp32Model: tf.GraphModel | null = null;
-  private deepInspectionModel: tf.GraphModel | null = null;
+  private breadboardModel: tf.GraphModel | null = null;
+  private motorConnectedModel: tf.GraphModel | null = null;
+  private motorNotConnectedModel: tf.GraphModel | null = null;
   private modelsInitialized: Set<ModelType> = new Set();
   private memoryCheckInterval: number | null = null;
   private lastMemoryWarning = 0;
   private inferenceCount = 0;
   private tempTensors: tf.Tensor[] = []; // Track temporary tensors
-  
+
   // iOS PWA optimizations
   private deviceCapabilities = getDeviceCapabilities();
   private lastInferenceTime = 0;
@@ -140,8 +154,8 @@ class MLService {
       // iOS PWA WebGL optimization
       if (this.deviceCapabilities.isIOSDevice) {
         // Use WebGL with iOS-specific optimizations
-        await tf.setBackend('webgl');
-        
+      await tf.setBackend('webgl');
+      
         // iOS Safari WebGL optimizations
         tf.env().set('WEBGL_VERSION', 2);
         tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
@@ -156,8 +170,8 @@ class MLService {
         console.log('🍎 iOS WebGL optimizations applied');
       } else {
         await tf.setBackend('webgl');
-        tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
-        tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
+      tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+      tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
       }
 
       if (modelType === 'esp32') {
@@ -167,28 +181,50 @@ class MLService {
         // iOS PWA: Load with timeout and retry logic
         const modelUrl = '/models/esp32/model.json';
         this.esp32Model = await this.loadModelWithRetry(modelUrl, 3);
-        
+      
         // Test ESP32 model with iOS-optimized input
         console.log('🔍 Testing ESP32 Assembly model...');
         await this.testModelInference(this.esp32Model, 'ESP32');
         
-      } else if (modelType === 'deep_inspection') {
-        // Load Deep Inspection model
-        console.log('📦 Loading Deep Inspection model...');
+            } else if (modelType === 'breadboard') {
+        // Load Breadboard model (optimized)
+        console.log('📦 Loading Breadboard model...');
         
-        const modelUrl = '/models/yolov8_tfjs/model.json';
-        this.deepInspectionModel = await this.loadModelWithRetry(modelUrl, 3);
+        const modelUrl = '/models/breadboard_new/model.json';
+        this.breadboardModel = await this.loadModelWithRetry(modelUrl, 3);
         
-        // Test Deep Inspection model
-        console.log('🔍 Testing Deep Inspection model...');
-        await this.testModelInference(this.deepInspectionModel, 'DeepInspection');
+        // Test Breadboard model
+        console.log('🔍 Testing Breadboard model...');
+        await this.testModelInference(this.breadboardModel, 'Breadboard');
+        
+      } else if (modelType === 'motor_connected') {
+        // Load Motor Connected model
+        console.log('📦 Loading Motor Connected model...');
+        
+        const modelUrl = '/models/motor_connected/model.json';
+        this.motorConnectedModel = await this.loadModelWithRetry(modelUrl, 3);
+        
+        // Test Motor Connected model
+        console.log('🔍 Testing Motor Connected model...');
+        await this.testModelInference(this.motorConnectedModel, 'MotorConnected');
+        
+      } else if (modelType === 'motor_not_connected') {
+        // Load Motor Not Connected model
+        console.log('📦 Loading Motor Not Connected model...');
+        
+        const modelUrl = '/models/motor_not_connected/model.json';
+        this.motorNotConnectedModel = await this.loadModelWithRetry(modelUrl, 3);
+        
+        // Test Motor Not Connected model
+        console.log('🔍 Testing Motor Not Connected model...');
+        await this.testModelInference(this.motorNotConnectedModel, 'MotorNotConnected');
       }
       
       this.modelsInitialized.add(modelType);
       
       // Start memory monitoring if first model
       if (this.modelsInitialized.size === 1) {
-        this.startMemoryMonitoring();
+      this.startMemoryMonitoring();
       }
       
       console.log(`🎯 ${modelType} model ready for iOS PWA detection!`);
@@ -201,9 +237,9 @@ class MLService {
         console.log('🔄 Trying iOS PWA fallback strategies...');
         await this.tryFallbackStrategies(modelType);
       } else {
-        throw error;
-      }
+      throw error;
     }
+  }
   }
 
   private async loadModelWithRetry(url: string, maxRetries: number): Promise<tf.GraphModel> {
@@ -367,36 +403,36 @@ class MLService {
     }
   }
 
-  async detectDeepInspection(canvas: HTMLCanvasElement): Promise<DeepInspectionAnalysis> {
-    if (!this.modelsInitialized.has('deep_inspection') || !this.deepInspectionModel) {
-      await this.initializeModel('deep_inspection');
+  async detectMotorConnection(canvas: HTMLCanvasElement): Promise<MotorAnalysis> {
+    // Initialize motor models if needed
+    if (!this.modelsInitialized.has('motor_connected')) {
+      await this.initializeModel('motor_connected');
+    }
+    if (!this.modelsInitialized.has('motor_not_connected')) {
+      await this.initializeModel('motor_not_connected');
     }
 
     // iOS PWA: Frame rate limiting
     if (!this.shouldRunInference()) {
-      return this.getEmptyDeepInspectionAnalysis();
+      return this.getEmptyMotorAnalysis();
     }
 
     // Check memory before inference
     if (!this.checkMemoryHealth()) {
-      console.warn('⚠️ Memory threshold exceeded, skipping Deep Inspection inference');
-      return this.getEmptyDeepInspectionAnalysis();
+      console.warn('⚠️ Memory threshold exceeded, skipping Motor Detection inference');
+      return this.getEmptyMotorAnalysis();
     }
 
     const startTime = performance.now();
-    this.inferenceCount++;
-    this.lastInferenceTime = startTime;
-    
     let inputTensor: tf.Tensor | null = null;
-    let predictions: tf.Tensor | null = null;
+    let connectedPredictions: tf.Tensor | null = null;
+    let notConnectedPredictions: tf.Tensor | null = null;
 
     try {
-      // 1. Preprocess image with iOS PWA optimizations
+      // 1. Preprocess image for both models
       const preprocessStart = performance.now();
-      
       inputTensor = tf.tidy(() => {
-        const targetSize = this.deviceCapabilities.hasLimitedMemory ? 416 : 640;
-        
+        const targetSize = 640;
         return tf.browser.fromPixels(canvas)
           .resizeNearestNeighbor([targetSize, targetSize])
           .expandDims(0)
@@ -405,28 +441,54 @@ class MLService {
       
       const preprocessTime = performance.now() - preprocessStart;
 
-      // 2. Run inference
+      // 2. Run inference on both motor models
       const inferenceStart = performance.now();
-      predictions = await this.deepInspectionModel!.predict(inputTensor) as tf.Tensor;
+      connectedPredictions = this.motorConnectedModel!.predict(inputTensor) as tf.Tensor;
+      notConnectedPredictions = this.motorNotConnectedModel!.predict(inputTensor) as tf.Tensor;
       const inferenceTime = performance.now() - inferenceStart;
 
-      // 3. Process results
+      // 3. Process results from both models
       const postprocessStart = performance.now();
-      const detections = this.processDeepInspectionOutput(predictions, canvas.width, canvas.height);
+      const connectedDetections = this.processYOLOOutput(connectedPredictions, canvas.width, canvas.height, 'Motor');
+      const notConnectedDetections = this.processYOLOOutput(notConnectedPredictions, canvas.width, canvas.height, 'Motor');
       const postprocessTime = performance.now() - postprocessStart;
 
       const totalTime = performance.now() - startTime;
 
-      // Analyze detections for quality assessment
-      const defectTypes = [...new Set(detections.map(d => d.class))];
-      const qualityScore = this.calculateQualityScore(detections);
+      // Determine connection status based on detections
+      let connectionStatus: 'connected' | 'not_connected' | 'unknown' = 'unknown';
+      let allDetections: DetectionResult[] = [];
+      let confidence = 0;
 
-      const result: DeepInspectionAnalysis = {
-        detections,
-        confidence: detections.length > 0 ? detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length : 0,
+      if (connectedDetections.length > 0 && notConnectedDetections.length === 0) {
+        connectionStatus = 'connected';
+        allDetections = connectedDetections;
+        confidence = Math.max(...connectedDetections.map(d => d.confidence));
+      } else if (notConnectedDetections.length > 0 && connectedDetections.length === 0) {
+        connectionStatus = 'not_connected';
+        allDetections = notConnectedDetections;
+        confidence = Math.max(...notConnectedDetections.map(d => d.confidence));
+      } else if (connectedDetections.length > 0 && notConnectedDetections.length > 0) {
+        // Both detected, use higher confidence
+        const connectedConf = Math.max(...connectedDetections.map(d => d.confidence));
+        const notConnectedConf = Math.max(...notConnectedDetections.map(d => d.confidence));
+        
+        if (connectedConf > notConnectedConf) {
+          connectionStatus = 'connected';
+          allDetections = connectedDetections;
+          confidence = connectedConf;
+        } else {
+          connectionStatus = 'not_connected';
+          allDetections = notConnectedDetections;
+          confidence = notConnectedConf;
+        }
+      }
+
+      const result: MotorAnalysis = {
+        detections: allDetections,
+        confidence,
         processingTime: totalTime,
-        defectTypes,
-        qualityScore,
+        connectionStatus,
         performance: {
           preprocessing: preprocessTime,
           inference: inferenceTime,
@@ -440,7 +502,86 @@ class MLService {
       return result;
 
     } catch (error) {
-      console.error('❌ Deep Inspection detection failed:', error);
+      console.error('❌ Motor Detection failed:', error);
+      
+      // iOS PWA: Handle WebGL context loss
+      if (this.isWebGLContextLost(error)) {
+        await this.handleWebGLContextLoss();
+      }
+      
+      throw error;
+    } finally {
+      // Clean up tensors
+      if (inputTensor) inputTensor.dispose();
+      if (connectedPredictions) connectedPredictions.dispose();
+      if (notConnectedPredictions) notConnectedPredictions.dispose();
+      this.cleanupTempTensors();
+    }
+  }
+
+  async detectBreadboard(canvas: HTMLCanvasElement): Promise<ESP32Analysis> {
+    if (!this.modelsInitialized.has('breadboard') || !this.breadboardModel) {
+      await this.initializeModel('breadboard');
+    }
+
+    // iOS PWA: Frame rate limiting
+    if (!this.shouldRunInference()) {
+      return this.getEmptyESP32Analysis();
+    }
+
+    // Check memory before inference
+    if (!this.checkMemoryHealth()) {
+      console.warn('⚠️ Memory threshold exceeded, skipping Breadboard detection');
+      return this.getEmptyESP32Analysis();
+    }
+
+    const startTime = performance.now();
+    let inputTensor: tf.Tensor | null = null;
+    let predictions: tf.Tensor | null = null;
+
+    try {
+      // 1. Preprocess image (iOS PWA optimized)
+      const preprocessStart = performance.now();
+      inputTensor = tf.tidy(() => {
+        const targetSize = 640;
+        return tf.browser.fromPixels(canvas)
+          .resizeNearestNeighbor([targetSize, targetSize])
+          .expandDims(0)
+          .div(255.0);
+      });
+      
+      const preprocessTime = performance.now() - preprocessStart;
+
+      // 2. Run inference with iOS optimizations
+      const inferenceStart = performance.now();
+      predictions = await this.breadboardModel!.predict(inputTensor) as tf.Tensor;
+      const inferenceTime = performance.now() - inferenceStart;
+
+      // 3. Process YOLO output
+      const postprocessStart = performance.now();
+      const detections = this.processYOLOOutput(predictions, canvas.width, canvas.height, 'Breadboard');
+      const postprocessTime = performance.now() - postprocessStart;
+
+      const totalTime = performance.now() - startTime;
+      
+      const result: ESP32Analysis = {
+        detections,
+        confidence: detections.length > 0 ? Math.max(...detections.map(d => d.confidence)) : 0,
+        processingTime: totalTime,
+        performance: {
+          preprocessing: preprocessTime,
+          inference: inferenceTime,
+          postprocessing: postprocessTime
+        }
+      };
+
+      // iOS PWA: Adaptive performance monitoring
+      this.adjustPerformanceMode(totalTime);
+
+      return result;
+
+    } catch (error) {
+      console.error('❌ Breadboard detection failed:', error);
       
       // iOS PWA: Handle WebGL context loss
       if (this.isWebGLContextLost(error)) {
@@ -506,9 +647,13 @@ class MLService {
     try {
       // Clear all models and reinitialize
       this.esp32Model?.dispose();
-      this.deepInspectionModel?.dispose();
+      this.breadboardModel?.dispose();
+      this.motorConnectedModel?.dispose();
+      this.motorNotConnectedModel?.dispose();
       this.esp32Model = null;
-      this.deepInspectionModel = null;
+      this.breadboardModel = null;
+      this.motorConnectedModel = null;
+      this.motorNotConnectedModel = null;
       this.modelsInitialized.clear();
       
       // Force cleanup
@@ -553,13 +698,14 @@ class MLService {
     };
   }
 
-  private getEmptyDeepInspectionAnalysis(): DeepInspectionAnalysis {
+
+
+  private getEmptyMotorAnalysis(): MotorAnalysis {
     return {
       detections: [],
       confidence: 0,
       processingTime: 0,
-      defectTypes: [],
-      qualityScore: 100,
+      connectionStatus: 'unknown',
       performance: { preprocessing: 0, inference: 0, postprocessing: 0 }
     };
   }
@@ -638,182 +784,9 @@ class MLService {
     return finalResults;
   }
 
-  private processDeepInspectionOutput(predictions: tf.Tensor, originalWidth: number, originalHeight: number): DetectionResult[] {
-    const data = predictions.dataSync() as Float32Array;
-    const detections: DetectionResult[] = [];
-    
-    // NEW: Handle TFLite model output format [1, 4499, 8400]
-    // This model has a different output structure than typical YOLO
-    const confThreshold = 0.25;
-    const numBoxes = 8400; // Changed from 8400 to match output
-    const numFeatures = 4499; // First dimension after batch
-    
-    // Define proper defect class names based on metadata
-    const classNames = [
-      'defect', 'crack', 'scratch', 'dent', 'corrosion', 
-      'discoloration', 'missing_part', 'misalignment', 
-      'contamination', 'wear', 'damage'
-    ];
-    
-    console.log(`🔍 Processing deep inspection output: [${data.length}] values`);
-    
-    // The TFLite model has output shape [1, 4499, 8400] which is different from standard YOLO
-    // We need to interpret this format correctly
-    for (let i = 0; i < numBoxes; i++) {
-      // Try different interpretations of the output format
-      let bestClass = 0;
-      let bestScore = 0;
-      
-      // Attempt to find class probabilities in the data
-      // Since the format is [1, 4499, 8400], we need to find where classes are stored
-      
-      // Method 1: Check if classes are in the first few features
-      for (let c = 0; c < Math.min(classNames.length, 50); c++) {
-        const scoreIndex = c * numBoxes + i;
-        if (scoreIndex < data.length) {
-          const score = data[scoreIndex];
-          if (score > bestScore) {
-            bestScore = score;
-            bestClass = c;
-          }
-        }
-      }
-      
-      // Method 2: Check if it's transposed format (features per box)
-      if (bestScore < confThreshold) {
-        const baseIndex = i * numFeatures;
-        for (let c = 0; c < Math.min(classNames.length, 100); c++) {
-          const scoreIndex = baseIndex + c + 4; // Skip bbox coords
-          if (scoreIndex < data.length) {
-            const score = data[scoreIndex];
-            if (score > bestScore) {
-              bestScore = score;
-              bestClass = c;
-            }
-          }
-        }
-      }
-      
-      // Method 3: Check normalized confidence values
-      if (bestScore < confThreshold) {
-        // Try sigmoid activation on raw values
-        const rawScore = data[i] || 0;
-        const sigmoidScore = 1 / (1 + Math.exp(-rawScore));
-        if (sigmoidScore > confThreshold) {
-          bestScore = sigmoidScore;
-          bestClass = Math.floor(Math.random() * classNames.length); // Random class for demo
-        }
-      }
-      
-      if (bestScore > confThreshold) {
-        // Extract bounding box coordinates
-        // Try different coordinate interpretations
-        let rawCx, rawCy, rawW, rawH;
-        
-        // Method 1: Standard YOLO format assumption
-        const coordBase = i;
-        rawCx = data[coordBase] || 0;
-        rawCy = data[coordBase + numBoxes] || 0;
-        rawW = data[coordBase + numBoxes * 2] || 0;
-        rawH = data[coordBase + numBoxes * 3] || 0;
-        
-        // Method 2: Transposed format
-        if (rawCx === 0 && rawCy === 0 && rawW === 0 && rawH === 0) {
-          const coordBase2 = i * numFeatures;
-          rawCx = data[coordBase2] || 0;
-          rawCy = data[coordBase2 + 1] || 0;
-          rawW = data[coordBase2 + 2] || 0;
-          rawH = data[coordBase2 + 3] || 0;
-        }
-        
-        // Normalize coordinates if they seem to be in pixel space
-        if (rawCx > 1.0 || rawCy > 1.0) {
-          rawCx = rawCx / 640;
-          rawCy = rawCy / 640;
-          rawW = rawW / 640;
-          rawH = rawH / 640;
-        }
-        
-                 // Scale to canvas size
-         const cx = rawCx * originalWidth;
-         const cy = rawCy * originalHeight;
-         const w = rawW * originalWidth;
-         const h = rawH * originalHeight;
-        
-        // Convert center format to corner format
-        const x1 = Math.max(0, cx - w/2);
-        const y1 = Math.max(0, cy - h/2);
-        const x2 = Math.min(originalWidth, cx + w/2);
-        const y2 = Math.min(originalHeight, cy + h/2);
-        
-        // Size filtering
-        const minWidth = 20;
-        const minHeight = 20;
-        const boxWidth = x2 - x1;
-        const boxHeight = y2 - y1;
-        
-        if (boxWidth > minWidth && boxHeight > minHeight && boxWidth < originalWidth && boxHeight < originalHeight) {
-          detections.push({
-            class: classNames[bestClass] || 'unknown',
-            confidence: bestScore,
-            bbox: [x1, y1, x2, y2],
-            score: bestScore
-          });
-        }
-      }
-    }
-    
-    console.log(`🎯 Found ${detections.length} potential detections before filtering`);
-    
-    // Apply Non-Maximum Suppression
-    const nmsThreshold = 0.4;
-    const nmsResults = this.applyNMS(detections, nmsThreshold);
-    
-    // Final confidence filtering
-    const finalResults = nmsResults.filter(detection => detection.confidence >= 0.3);
-    
-    console.log(`✅ Final deep inspection results: ${finalResults.length} detections`);
-    
-    return finalResults;
-  }
 
-  private calculateQualityScore(detections: DetectionResult[]): number {
-    if (detections.length === 0) return 100; // Perfect if no defects detected
-    
-    // Calculate quality score based on defect severity and count
-    let severityPenalty = 0;
-    detections.forEach(detection => {
-      const severity = this.getDefectSeverity(detection.class);
-      const confidenceFactor = detection.confidence;
-      severityPenalty += severity * confidenceFactor * 12; // Real defect penalty
-    });
-    
-    // Additional penalty for multiple defects
-    const countPenalty = Math.min(detections.length * 8, 40);
-    
-    let qualityScore = 100 - severityPenalty - countPenalty;
-    
-    // Ensure score is between 0 and 100
-    return Math.max(0, Math.min(100, qualityScore));
-  }
 
-  private getDefectSeverity(defectType: string): number {
-    // Map actual defect types to severity levels
-    switch (defectType) {
-      case 'crack': return 3.5;
-      case 'corrosion': return 3.0;
-      case 'missing_part': return 3.0;
-      case 'dent': return 2.5;
-      case 'misalignment': return 2.5;
-      case 'scratch': return 2.0;
-      case 'discoloration': return 1.8;
-      case 'contamination': return 1.5;
-      case 'wear': return 1.5;
-      case 'damage': return 2.8;
-      case 'defect': return 2.0;
-      default: return 1.0;
-    }
-  }
+
 
   private applyNMS(detections: DetectionResult[], threshold: number): DetectionResult[] {
     if (detections.length === 0) return [];
@@ -969,9 +942,19 @@ class MLService {
       this.esp32Model = null;
     }
     
-    if (this.deepInspectionModel) {
-      this.deepInspectionModel.dispose();
-      this.deepInspectionModel = null;
+    if (this.breadboardModel) {
+      this.breadboardModel.dispose();
+      this.breadboardModel = null;
+    }
+    
+    if (this.motorConnectedModel) {
+      this.motorConnectedModel.dispose();
+      this.motorConnectedModel = null;
+    }
+    
+    if (this.motorNotConnectedModel) {
+      this.motorNotConnectedModel.dispose();
+      this.motorNotConnectedModel = null;
     }
     
     // Clean up temp tensors

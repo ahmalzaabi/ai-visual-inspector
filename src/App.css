@@ -1710,7 +1710,75 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Defect Types */
+/* Motor Connection Indicator */
+.connection-indicator {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.status-indicator.connected {
+  background: #10b981;
+  border-color: #059669;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.status-indicator.not_connected {
+  background: #ef4444;
+  border-color: #dc2626;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.status-indicator.unknown {
+  background: #f59e0b;
+  border-color: #d97706;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.status-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.confidence-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Legacy Defect Types (keeping for compatibility) */
 .defect-types {
   margin-bottom: 20px;
 }
