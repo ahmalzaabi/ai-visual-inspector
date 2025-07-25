@@ -420,7 +420,6 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                     </svg>
                   </div>
                   <h3>{t('camera.start')}</h3>
-                  <p>{t('camera.placeholder')}</p>
                 </div>
                 <button 
                   className="btn btn-primary btn-large" 
