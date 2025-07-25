@@ -77,6 +77,7 @@ class MLService {
           tf.env().set('WEBGL_VERSION', 1);
           tf.env().set('WEBGL_FORCE_F16_TEXTURES', false);
         } catch (webglError) {
+          console.warn('WebGL failed, falling back to CPU:', webglError);
           await tf.setBackend('cpu');
         }
       } else {
@@ -84,7 +85,7 @@ class MLService {
       }
       
       this.isInitialized = true;
-      console.log('✅ TensorFlow backend ready');
+      console.log('✅ TensorFlow backend ready:', tf.getBackend());
       
     } catch (error) {
       console.error('❌ TensorFlow initialization failed:', error);
@@ -105,30 +106,37 @@ class MLService {
       console.log('Loading model from:', modelUrl);
       
       this.esp32Model = await tf.loadGraphModel(modelUrl);
+      console.log('✅ Model loaded successfully');
       
       // Warm up the model with a test input
-      console.log('Warming up model...');
+      console.log('🔥 Warming up model...');
       const testInput = tf.zeros([1, 640, 640, 3]);
-      const output = this.esp32Model.predict(testInput);
+      const startTime = performance.now();
       
-      // Handle both single tensor and array of tensors
-      let outputTensor: tf.Tensor;
-      if (Array.isArray(output)) {
-        outputTensor = output[0];
-        console.log('Model output shape (array):', output.map(t => t.shape));
-      } else {
-        outputTensor = output as tf.Tensor;
-        console.log('Model output shape (single):', outputTensor.shape);
+      // Use execute method for more complex models
+      let output;
+      try {
+        output = this.esp32Model.predict(testInput);
+      } catch (predictError) {
+        console.warn('Predict failed, trying execute method:', predictError);
+        // Try with execute method for complex signatures
+        output = this.esp32Model.execute(testInput);
       }
       
-      testInput.dispose();
+      const inferenceTime = performance.now() - startTime;
+      console.log(`⚡ Inference time: ${inferenceTime.toFixed(1)}ms`);
+      
+      // Handle both single tensor and array of tensors
       if (Array.isArray(output)) {
+        console.log('📊 Model output (array):', output.map(t => `[${t.shape.join(',')}]`).join(', '));
         output.forEach(t => t.dispose());
       } else {
+        console.log('📊 Model output shape:', output.shape);
         (output as tf.Tensor).dispose();
       }
       
-      console.log('✅ ESP32 model ready');
+      testInput.dispose();
+      console.log('✅ ESP32 model ready for detection');
       
     } catch (error) {
       console.error('❌ ESP32 model loading failed:', error);
@@ -140,11 +148,12 @@ class MLService {
   // ESP32 Detection Function
   async detectESP32(canvas: HTMLCanvasElement, videoElement?: HTMLVideoElement): Promise<ESP32Analysis> {
     if (!this.esp32Model) {
+      console.log('🔄 Model not loaded, initializing...');
       await this.initializeESP32Model();
     }
 
     if (!this.esp32Model) {
-      console.error('Model failed to initialize');
+      console.error('❌ Model failed to initialize');
       return {
         detections: [],
         esp32Detected: false,
@@ -156,7 +165,7 @@ class MLService {
     try {
       // Prepare input tensor
       let inputTensor: tf.Tensor4D;
-      if (videoElement) {
+      if (videoElement && videoElement.readyState >= 2) {
         // Create temporary canvas for video frame
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
@@ -178,19 +187,27 @@ class MLService {
           .expandDims(0) as tf.Tensor4D;
       }
 
-      console.log('Input tensor shape:', inputTensor.shape);
+      console.log('🔍 Running inference on input shape:', inputTensor.shape);
 
-      // Run inference
-      const predictions = this.esp32Model.predict(inputTensor);
+      // Run inference with error handling
+      let predictions;
+      try {
+        predictions = this.esp32Model.predict(inputTensor);
+      } catch (predictError) {
+        console.warn('Predict failed, trying execute:', predictError);
+        predictions = this.esp32Model.execute(inputTensor);
+      }
       
       // Handle different output formats
       let predictionTensor: tf.Tensor;
       if (Array.isArray(predictions)) {
         predictionTensor = predictions[0];
-        console.log('Prediction shapes (array):', predictions.map(p => p.shape));
+        console.log('📈 Output array shapes:', predictions.map(p => p.shape));
+        // Dispose other tensors
+        predictions.slice(1).forEach(p => p.dispose());
       } else {
         predictionTensor = predictions as tf.Tensor;
-        console.log('Prediction shape (single):', predictionTensor.shape);
+        console.log('📈 Output shape:', predictionTensor.shape);
       }
       
       // Parse YOLOv8 output
@@ -202,16 +219,12 @@ class MLService {
 
       // Cleanup
       inputTensor.dispose();
-      if (Array.isArray(predictions)) {
-        predictions.forEach(p => p.dispose());
-      } else {
-        (predictions as tf.Tensor).dispose();
-      }
+      predictionTensor.dispose();
 
       return analysis;
 
     } catch (error) {
-      console.error('ESP32 detection failed:', error);
+      console.error('❌ ESP32 detection failed:', error);
       return {
         detections: [],
         esp32Detected: false,
@@ -230,17 +243,18 @@ class MLService {
     const data = await predictions.data();
     const shape = predictions.shape;
     
-    console.log('Model output shape:', shape);
-    console.log('First 20 values:', Array.from(data.slice(0, 20)));
+    console.log('🔬 Parsing output shape:', shape);
+    console.log('🔬 First 10 values:', Array.from(data.slice(0, 10)).map(v => v.toFixed(4)));
     
     const detections: ESP32Detection[] = [];
-    const confThreshold = 0.3; // Lower threshold for better detection
+    const confThreshold = 0.25; // Even lower threshold for testing
     
     // Handle different YOLOv8 output formats
     if (shape.length === 3 && shape[0] === 1) {
       // Format: [1, features, anchors]
       if (shape[1] === 5 && shape[2] === 8400) {
         // Format: [1, 5, 8400] - [x, y, w, h, conf]
+        console.log('📋 Detected format: [1, 5, 8400]');
         const numAnchors = shape[2];
         
         for (let i = 0; i < numAnchors; i++) {
@@ -250,8 +264,12 @@ class MLService {
           const h = data[3 * numAnchors + i];   // height (normalized 0-1)
           const conf = data[4 * numAnchors + i]; // confidence
           
-          // Apply sigmoid if needed (check if confidence is already sigmoid)
-          const confidence = conf > 1 ? 1 / (1 + Math.exp(-conf)) : Math.max(0, Math.min(1, conf));
+          // Handle different confidence formats
+          let confidence = conf;
+          if (conf > 1) {
+            confidence = 1 / (1 + Math.exp(-conf)); // Sigmoid
+          }
+          confidence = Math.max(0, Math.min(1, confidence)); // Clamp
           
           if (confidence > confThreshold) {
             // Convert normalized coordinates to pixel coordinates
@@ -265,7 +283,7 @@ class MLService {
             const top = Math.max(0, centerY - height / 2);
             
             // Validate detection
-            if (width > 20 && height > 20 && 
+            if (width > 15 && height > 15 && 
                 left + width <= originalWidth && top + height <= originalHeight) {
               
               detections.push({
@@ -281,6 +299,7 @@ class MLService {
         }
       } else if (shape[1] === 8400 && shape[2] === 5) {
         // Format: [1, 8400, 5] - transposed
+        console.log('📋 Detected format: [1, 8400, 5]');
         const numAnchors = shape[1];
         
         for (let i = 0; i < numAnchors; i++) {
@@ -290,7 +309,11 @@ class MLService {
           const h = data[i * 5 + 3];   // height
           const conf = data[i * 5 + 4]; // confidence
           
-          const confidence = conf > 1 ? 1 / (1 + Math.exp(-conf)) : Math.max(0, Math.min(1, conf));
+          let confidence = conf;
+          if (conf > 1) {
+            confidence = 1 / (1 + Math.exp(-conf));
+          }
+          confidence = Math.max(0, Math.min(1, confidence));
           
           if (confidence > confThreshold) {
             const centerX = x * originalWidth;
@@ -301,7 +324,7 @@ class MLService {
             const left = Math.max(0, centerX - width / 2);
             const top = Math.max(0, centerY - height / 2);
             
-            if (width > 20 && height > 20 && 
+            if (width > 15 && height > 15 && 
                 left + width <= originalWidth && top + height <= originalHeight) {
               
               detections.push({
@@ -315,13 +338,19 @@ class MLService {
             }
           }
         }
+      } else {
+        console.warn('⚠️ Unexpected output format:', shape);
+        console.log('🔬 Raw data sample:', Array.from(data.slice(0, 50)));
       }
+    } else {
+      console.warn('⚠️ Unexpected tensor dimensions:', shape);
     }
 
-    console.log(`Found ${detections.length} ESP32 detections`);
+    console.log(`🎯 Found ${detections.length} ESP32 detections (threshold: ${confThreshold})`);
     
     // Apply Non-Maximum Suppression
     const finalDetections = this.applyNMS(detections, 0.4);
+    console.log(`✅ After NMS: ${finalDetections.length} detections`);
     
     const avgConfidence = finalDetections.length > 0 
       ? finalDetections.reduce((sum, det) => sum + det.confidence, 0) / finalDetections.length 
