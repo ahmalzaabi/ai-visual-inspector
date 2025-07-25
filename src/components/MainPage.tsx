@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 
 interface MainPageProps {
   onNavigate: (page: 'features' | 'analytics') => void;
@@ -9,49 +10,49 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
 
   return (
-    <div className="features-page"> {/* Use same styling as features page */}
-      <header className="page-header">
-        <h1>{t('main.welcome')}</h1>
+    <div className="app">
+      {/* Header */}
+      <header className="main-header">
+        <div className="header-content">
+          <div className="app-info">
+            <h1 className="app-title">{t('title')}</h1>
+            <p className="app-subtitle">{t('subtitle')}</p>
+          </div>
+          <div className="header-actions">
+            <LanguageSwitcher />
+          </div>
+        </div>
       </header>
 
-      <main className="features-content">
+      {/* Main Content */}
+      <main className="main-content">
+        {/* App Description */}
         <div className="app-description-section">
           <h2 className="main-headline">{t('main.tagline')}</h2>
           <p className="description-text">{t('main.description')}</p>
-          
-          <div className="tech-highlights">
-            <span className="highlight-pill">AI Models</span>
-            <span className="highlight-pill">Computer Vision</span>
-            <span className="highlight-pill">Real-time Detection</span>
-            <span className="highlight-pill">PWA Optimized</span>
-          </div>
         </div>
 
-        <div className="feature-grid">
-          <div className="nav-button" onClick={() => onNavigate('features')}>
-            <div className="nav-content">
-              <h3 className="nav-title">{t('navigation.features')}</h3>
-              <p className="nav-description">{t('navigation.featuresDesc')}</p>
-            </div>
-            <div className="nav-arrow">
-              <span className="arrow-symbol">→</span>
-            </div>
-          </div>
+        {/* Navigation */}
+        <div className="main-navigation">
+          <button 
+            className="nav-button features-button"
+            onClick={() => onNavigate('features')}
+          >
+            <span className="nav-button-text">{t('main.navigation.features')}</span>
+          </button>
 
-          <div className="nav-button" onClick={() => onNavigate('analytics')}>
-            <div className="nav-content">
-              <h3 className="nav-title">{t('navigation.analytics')}</h3>
-              <p className="nav-description">{t('navigation.analyticsDesc')}</p>
-              <span className="coming-soon-badge">{t('common.comingSoon')}</span>
-            </div>
-            <div className="nav-arrow">
-              <span className="arrow-symbol">→</span>
-            </div>
-          </div>
+          <button 
+            className="nav-button analytics-button"
+            onClick={() => onNavigate('analytics')}
+          >
+            <span className="nav-button-text">{t('main.navigation.analytics')}</span>
+            <span className="coming-soon-indicator">{t('main.comingSoon')}</span>
+          </button>
         </div>
 
+        {/* Version Info */}
         <div className="app-version-info">
-          <span className="version-text">v1.0.0</span>
+          <span className="version-text">Version 1.0.0</span>
         </div>
       </main>
     </div>
