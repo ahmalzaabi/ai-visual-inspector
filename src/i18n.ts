@@ -40,13 +40,19 @@ const resources = {
         placeholder: "Tap to start camera",
         error: "Camera Error"
       },
+      common: {
+        back: "Back",
+        dismiss: "Dismiss",
+        comingSoon: "Coming Soon"
+      },
       detection: {
         local_server: "Local Server",
         device_mode: "Device Mode"
       },
       main: {
         welcome: "Next-Generation AI Vision Platform",
-        description: "Experience the convergence of cutting-edge technologies - where Artificial Intelligence meets Computer Vision, Machine Learning fuses with Augmented Reality, and Deep Neural Networks power real-time industrial inspection. Built for the future of intelligent automation with precision that exceeds human capability.",
+        tagline: "Experience the convergence of cutting-edge technologies - where Artificial Intelligence meets Computer Vision, Machine Learning fuses with Augmented Reality, and Deep Neural Networks power real-time industrial inspection. Built for the future of intelligent automation with precision that exceeds human capability.",
+        description: "Advanced AI-powered visual inspection platform for industrial automation and quality control.",
         techHighlights: {
           ar: "Augmented Reality",
           ai: "AI",
@@ -92,6 +98,7 @@ const resources = {
       analytics: {
         title: "Analytics Dashboard",
         comingSoon: "Analytics Coming Soon",
+        placeholder: "Advanced analytics and insights coming soon. Track model performance, detection accuracy, and system metrics.",
         description: "Advanced analytics and insights will help you understand model performance patterns, optimize neural network parameters, and make data-driven decisions for your computer vision workflows.",
         features: {
           performance: "Model Performance",
@@ -169,13 +176,19 @@ const resources = {
         placeholder: "اضغط لبدء تشغيل الكاميرا",
         error: "خطأ في الكاميرا"
       },
+      common: {
+        back: "رجوع",
+        dismiss: "إغلاق",
+        comingSoon: "قريباً"
+      },
       detection: {
         local_server: "خادم محلي",
         device_mode: "وضع الجهاز"
       },
       main: {
         welcome: "منصة الرؤية الذكية للجيل القادم", 
-        description: "اختبر تلاقي التقنيات المتطورة - حيث يلتقي الذكاء الاصطناعي مع الرؤية الحاسوبية، ويندمج التعلم الآلي مع الواقع المعزز، وتُشغل الشبكات العصبية العميقة الفحص الصناعي الفوري. مُصمم لمستقبل الأتمتة الذكية بدقة تفوق القدرة البشرية.",
+        tagline: "اختبر تلاقي التقنيات المتطورة - حيث يلتقي الذكاء الاصطناعي مع الرؤية الحاسوبية، ويندمج التعلم الآلي مع الواقع المعزز، وتُشغل الشبكات العصبية العميقة الفحص الصناعي الفوري. مُصمم لمستقبل الأتمتة الذكية بدقة تفوق القدرة البشرية.",
+        description: "منصة فحص بصري متقدمة مدعومة بالذكاء الاصطناعي للأتمتة الصناعية ومراقبة الجودة.",
         techHighlights: {
           ar: "الواقع المعزز",
           ai: "الذكاء الاصطناعي",
@@ -221,6 +234,7 @@ const resources = {
       analytics: {
         title: "لوحة التحليلات",
         comingSoon: "التحليلات قريباً",
+        placeholder: "التحليلات والرؤى المتقدمة قريباً. تتبع أداء النماذج ودقة الكشف ومقاييس النظام.",
         description: "ستساعدك التحليلات والرؤى المتقدمة في فهم أنماط أداء النماذج وتحسين معاملات الشبكة العصبية واتخاذ قرارات مبنية على البيانات لسير عمل الرؤية الحاسوبية.",
         features: {
           performance: "أداء النموذج",

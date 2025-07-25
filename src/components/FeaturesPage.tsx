@@ -29,31 +29,56 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const features = [
     {
       id: 'assembly',
-      icon: <span>🔧</span>,
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
       feature: t('features.assembly'),
       description: t('descriptions.assembly')
     },
     {
       id: 'inspection',
-      icon: <span>🔍</span>,
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
+          <path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
       feature: t('features.inspection'),
       description: t('descriptions.inspection')
     },
     {
       id: 'repair',
-      icon: <span>🛠️</span>,
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M21 12c.552 0 1-.449 1-1V5c0-.552-.448-1-1-1h-6c-.552 0-1 .448-1 1v6c0 .551.448 1 1 1h6z" stroke="currentColor" strokeWidth="2"/>
+          <path d="M3 7v10a4 4 0 0 0 4 4h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      ),
       feature: t('features.repair'),
       description: t('descriptions.repair')
     },
     {
       id: 'maintenance',
-      icon: <span>⚙️</span>,
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z" fill="currentColor"/>
+          <path d="M12 6a6 6 0 0 0-6 6h2a4 4 0 0 1 4-4z" fill="currentColor"/>
+        </svg>
+      ),
       feature: t('features.maintenance'),
       description: t('descriptions.maintenance')
     },
     {
       id: 'quality',
-      icon: <span>✅</span>,
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
       feature: t('features.quality'),
       description: t('descriptions.quality')
     }
@@ -363,7 +388,11 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           {/* Error Display */}
           {error && (
             <div className="error-message">
-              <div className="error-icon">⚠️</div>
+              <div className="error-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
               <div className="error-content">
                 <h4>{t('camera.error')}</h4>
                 <p>{error}</p>
@@ -384,7 +413,12 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               {/* Camera placeholder */}
               <div className={`camera-placeholder ${isPlaying ? 'hidden' : ''}`}>
                 <div className="placeholder-content">
-                  <div className="camera-icon">📷</div>
+                  <div className="camera-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                  </div>
                   <h3>{t('camera.start')}</h3>
                   <p>{t('camera.placeholder')}</p>
                 </div>
