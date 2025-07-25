@@ -13,7 +13,7 @@
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport height for mobile */
   width: 100%;
-  background: var(--bg-primary);
+  background: linear-gradient(135deg, #0a0e1a 0%, #1a1d29 50%, #2a2d3a 100%);
   /* Extend background behind Dynamic Island/notch */
   background-attachment: fixed;
   position: relative;
@@ -1189,11 +1189,12 @@
   padding-bottom: 1rem;
   padding-left: calc(1.5rem + env(safe-area-inset-left));
   padding-right: calc(1.5rem + env(safe-area-inset-right));
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, #1a1d29 0%, #2a2d3a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   /* Ensure header extends fully to edges */
   width: 100%;
   position: relative;
+  backdrop-filter: blur(10px);
 }
 
 .header-spacer {
@@ -1204,8 +1205,9 @@
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
-  color: var(--text-primary);
+  color: #ffffff;
   text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .header-actions {

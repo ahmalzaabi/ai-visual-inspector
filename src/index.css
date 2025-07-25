@@ -80,7 +80,7 @@ html {
 /* Body and HTML - iPhone PWA Safe Area Fix */
 html {
   height: 100%;
-  background: var(--bg-primary) !important;
+  background: linear-gradient(135deg, #0a0e1a 0%, #1a1d29 50%, #2a2d3a 100%) !important;
   color: var(--text-primary);
   overflow-x: hidden;
   /* Extend background into safe areas for iPhone PWA */
@@ -92,7 +92,7 @@ html {
 
 body {
   height: 100%;
-  background: var(--bg-primary) !important;
+  background: linear-gradient(135deg, #0a0e1a 0%, #1a1d29 50%, #2a2d3a 100%) !important;
   color: var(--text-primary);
   overflow-x: hidden;
   /* Remove any potential margins that could cause black bars */
