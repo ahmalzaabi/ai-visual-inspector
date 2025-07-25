@@ -7,16 +7,17 @@
 
 /* Dark tech minimalist theme */
 .app {
-  /* Ensure background extends into safe areas for iPhone PWA */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  /* Remove padding to eliminate black bars on iPhone PWA */
+  margin: 0;
+  padding: 0;
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport height for mobile */
+  width: 100%;
   background: var(--bg-primary);
   /* Extend background behind Dynamic Island/notch */
   background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
 }
 
 /* Extend background into safe areas - cover entire status bar */
@@ -1183,12 +1184,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  /* Add safe area padding to header only */
+  padding-top: calc(1rem + env(safe-area-inset-top));
+  padding-bottom: 1rem;
+  padding-left: calc(1.5rem + env(safe-area-inset-left));
+  padding-right: calc(1.5rem + env(safe-area-inset-right));
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
-  /* Ensure header background extends into iPhone island area */
-  margin-top: calc(-1 * env(safe-area-inset-top));
-  padding-top: calc(1rem + env(safe-area-inset-top));
+  /* Ensure header extends fully to edges */
+  width: 100%;
+  position: relative;
 }
 
 .header-spacer {
