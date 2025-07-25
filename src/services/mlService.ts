@@ -17,78 +17,38 @@ export interface ESP32Analysis {
   status: 'detected' | 'not_detected' | 'unknown';
 }
 
-// Device Capabilities Detection
-interface DeviceCapabilities {
-  isIOSDevice: boolean;
-  isIOSPWA: boolean;
-  hasLimitedMemory: boolean;
-  maxMemoryMB: number;
-  maxFPS: number;
-  isLowEndDevice: boolean;
-}
-
-// iOS PWA Detection Functions
-function isIOSPWA(): boolean {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isStandalone = (window.navigator as any).standalone || 
-                      window.matchMedia('(display-mode: standalone)').matches;
-  return isIOS && isStandalone;
-}
-
-function getDeviceCapabilities(): DeviceCapabilities {
-  const userAgent = navigator.userAgent;
-  const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent);
-  const estimatedMemory = (performance as any).memory?.usedJSHeapSize 
-    ? Math.round((performance as any).memory.jsHeapSizeLimit / 1024 / 1024)
-    : (isIOSDevice ? 512 : 1024);
-
-  return {
-    isIOSDevice,
-    isIOSPWA: isIOSPWA(),
-    hasLimitedMemory: estimatedMemory < 1024,
-    maxMemoryMB: estimatedMemory,
-    maxFPS: isIOSDevice ? 15 : 30,
-    isLowEndDevice: estimatedMemory < 512
-  };
-}
-
-// Enhanced ML Service with ESP32 Detection
+// Enhanced ML Service with ESP32 Detection using TensorFlow.js
 class MLService {
   private esp32Model: tf.GraphModel | null = null;
   private isInitialized = false;
-  private deviceCapabilities = getDeviceCapabilities();
 
   constructor() {
-    console.log('🔧 ML Service initialized with ESP32 detection');
+    console.log('🔧 ML Service initialized with TensorFlow.js ESP32 detection');
   }
 
   // Initialize TensorFlow backend
   async initializeTensorFlow(): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log('🚀 Initializing TensorFlow...');
+    console.log('🚀 Initializing TensorFlow.js...');
     
     try {
       await tf.ready();
       
-      if (this.deviceCapabilities.isIOSDevice) {
-        try {
-          await tf.setBackend('webgl');
-          tf.env().set('WEBGL_VERSION', 1);
-          tf.env().set('WEBGL_FORCE_F16_TEXTURES', false);
-        } catch (webglError) {
-          console.warn('WebGL failed, falling back to CPU:', webglError);
-          await tf.setBackend('cpu');
-        }
-      } else {
+      // Set backend based on device capabilities
+      try {
         await tf.setBackend('webgl');
+        console.log('✅ Using WebGL backend for GPU acceleration');
+      } catch (webglError) {
+        console.warn('⚠️ WebGL failed, falling back to CPU:', webglError);
+        await tf.setBackend('cpu');
       }
       
       this.isInitialized = true;
-      console.log('✅ TensorFlow backend ready:', tf.getBackend());
+      console.log('✅ TensorFlow.js ready, backend:', tf.getBackend());
       
     } catch (error) {
-      console.error('❌ TensorFlow initialization failed:', error);
+      console.error('❌ TensorFlow.js initialization failed:', error);
       throw error;
     }
   }
@@ -103,39 +63,32 @@ class MLService {
       await this.initializeTensorFlow();
       
       const modelUrl = '/models/esp32/model.json';
-      console.log('Loading model from:', modelUrl);
+      console.log('📥 Loading model from:', modelUrl);
       
       this.esp32Model = await tf.loadGraphModel(modelUrl);
       console.log('✅ Model loaded successfully');
+      
+      // Get model info
+      if (this.esp32Model.inputs && this.esp32Model.inputs[0]) {
+        const inputShape = this.esp32Model.inputs[0].shape;
+        console.log('📊 Model input shape:', inputShape);
+      }
       
       // Warm up the model with a test input
       console.log('🔥 Warming up model...');
       const testInput = tf.zeros([1, 640, 640, 3]);
       const startTime = performance.now();
       
-      // Use execute method for more complex models
-      let output;
-      try {
-        output = this.esp32Model.predict(testInput);
-      } catch (predictError) {
-        console.warn('Predict failed, trying execute method:', predictError);
-        // Try with execute method for complex signatures
-        output = this.esp32Model.execute(testInput);
-      }
+      const output = this.esp32Model.predict(testInput) as tf.Tensor;
       
       const inferenceTime = performance.now() - startTime;
-      console.log(`⚡ Inference time: ${inferenceTime.toFixed(1)}ms`);
+      console.log(`⚡ Warm-up inference time: ${inferenceTime.toFixed(1)}ms`);
+      console.log('📊 Model output shape:', output.shape);
       
-      // Handle both single tensor and array of tensors
-      if (Array.isArray(output)) {
-        console.log('📊 Model output (array):', output.map(t => `[${t.shape.join(',')}]`).join(', '));
-        output.forEach(t => t.dispose());
-      } else {
-        console.log('📊 Model output shape:', output.shape);
-        (output as tf.Tensor).dispose();
-      }
-      
+      // Cleanup
       testInput.dispose();
+      output.dispose();
+      
       console.log('✅ ESP32 model ready for detection');
       
     } catch (error) {
@@ -163,23 +116,20 @@ class MLService {
     }
 
     try {
-      // Prepare input tensor
+      console.log('🔍 Starting ESP32 detection...');
+      
+      // Prepare input tensor from canvas or video
       let inputTensor: tf.Tensor4D;
+      
       if (videoElement && videoElement.readyState >= 2) {
-        // Create temporary canvas for video frame
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        if (!tempCtx) throw new Error('Cannot get canvas context');
-        
-        tempCanvas.width = 640;
-        tempCanvas.height = 640;
-        tempCtx.drawImage(videoElement, 0, 0, 640, 640);
-        
-        inputTensor = tf.browser.fromPixels(tempCanvas)
+        // Use video element directly
+        inputTensor = tf.browser.fromPixels(videoElement)
+          .resizeBilinear([640, 640])
           .toFloat()
           .div(255.0)
           .expandDims(0) as tf.Tensor4D;
       } else {
+        // Use canvas
         inputTensor = tf.browser.fromPixels(canvas)
           .resizeBilinear([640, 640])
           .toFloat()
@@ -187,39 +137,26 @@ class MLService {
           .expandDims(0) as tf.Tensor4D;
       }
 
-      console.log('🔍 Running inference on input shape:', inputTensor.shape);
+      console.log('📊 Input tensor shape:', inputTensor.shape);
 
-      // Run inference with error handling
-      let predictions;
-      try {
-        predictions = this.esp32Model.predict(inputTensor);
-      } catch (predictError) {
-        console.warn('Predict failed, trying execute:', predictError);
-        predictions = this.esp32Model.execute(inputTensor);
-      }
+      // Run inference
+      const startTime = performance.now();
+      const predictions = this.esp32Model.predict(inputTensor) as tf.Tensor;
+      const inferenceTime = performance.now() - startTime;
       
-      // Handle different output formats
-      let predictionTensor: tf.Tensor;
-      if (Array.isArray(predictions)) {
-        predictionTensor = predictions[0];
-        console.log('📈 Output array shapes:', predictions.map(p => p.shape));
-        // Dispose other tensors
-        predictions.slice(1).forEach(p => p.dispose());
-      } else {
-        predictionTensor = predictions as tf.Tensor;
-        console.log('📈 Output shape:', predictionTensor.shape);
-      }
+      console.log(`⚡ Inference time: ${inferenceTime.toFixed(1)}ms`);
+      console.log('📊 Predictions shape:', predictions.shape);
       
       // Parse YOLOv8 output
       const analysis = await this.parseYOLOv8Output(
-        predictionTensor, 
+        predictions, 
         canvas.width, 
         canvas.height
       );
 
       // Cleanup
       inputTensor.dispose();
-      predictionTensor.dispose();
+      predictions.dispose();
 
       return analysis;
 
@@ -247,103 +184,74 @@ class MLService {
     console.log('🔬 First 10 values:', Array.from(data.slice(0, 10)).map(v => v.toFixed(4)));
     
     const detections: ESP32Detection[] = [];
-    const confThreshold = 0.25; // Even lower threshold for testing
+    const confThreshold = 0.25; // Confidence threshold
     
-    // Handle different YOLOv8 output formats
-    if (shape.length === 3 && shape[0] === 1) {
-      // Format: [1, features, anchors]
-      if (shape[1] === 5 && shape[2] === 8400) {
-        // Format: [1, 5, 8400] - [x, y, w, h, conf]
-        console.log('📋 Detected format: [1, 5, 8400]');
-        const numAnchors = shape[2];
-        
-        for (let i = 0; i < numAnchors; i++) {
-          const x = data[i];                    // x center (normalized 0-1)
-          const y = data[numAnchors + i];       // y center (normalized 0-1)  
-          const w = data[2 * numAnchors + i];   // width (normalized 0-1)
-          const h = data[3 * numAnchors + i];   // height (normalized 0-1)
-          const conf = data[4 * numAnchors + i]; // confidence
-          
-          // Handle different confidence formats
-          let confidence = conf;
-          if (conf > 1) {
-            confidence = 1 / (1 + Math.exp(-conf)); // Sigmoid
-          }
-          confidence = Math.max(0, Math.min(1, confidence)); // Clamp
-          
-          if (confidence > confThreshold) {
-            // Convert normalized coordinates to pixel coordinates
-            const centerX = x * originalWidth;
-            const centerY = y * originalHeight;
-            const width = w * originalWidth;
-            const height = h * originalHeight;
-            
-            // Convert center coordinates to top-left coordinates
-            const left = Math.max(0, centerX - width / 2);
-            const top = Math.max(0, centerY - height / 2);
-            
-            // Validate detection
-            if (width > 15 && height > 15 && 
-                left + width <= originalWidth && top + height <= originalHeight) {
-              
-              detections.push({
-                x: Math.round(left),
-                y: Math.round(top),
-                width: Math.round(width),
-                height: Math.round(height),
-                confidence: confidence,
-                class: 'ESP32'
-              });
-            }
-          }
-        }
-      } else if (shape[1] === 8400 && shape[2] === 5) {
-        // Format: [1, 8400, 5] - transposed
-        console.log('📋 Detected format: [1, 8400, 5]');
-        const numAnchors = shape[1];
-        
-        for (let i = 0; i < numAnchors; i++) {
-          const x = data[i * 5];       // x center
-          const y = data[i * 5 + 1];   // y center
-          const w = data[i * 5 + 2];   // width
-          const h = data[i * 5 + 3];   // height
-          const conf = data[i * 5 + 4]; // confidence
-          
-          let confidence = conf;
-          if (conf > 1) {
-            confidence = 1 / (1 + Math.exp(-conf));
-          }
-          confidence = Math.max(0, Math.min(1, confidence));
-          
-          if (confidence > confThreshold) {
-            const centerX = x * originalWidth;
-            const centerY = y * originalHeight;
-            const width = w * originalWidth;
-            const height = h * originalHeight;
-            
-            const left = Math.max(0, centerX - width / 2);
-            const top = Math.max(0, centerY - height / 2);
-            
-            if (width > 15 && height > 15 && 
-                left + width <= originalWidth && top + height <= originalHeight) {
-              
-              detections.push({
-                x: Math.round(left),
-                y: Math.round(top),
-                width: Math.round(width),
-                height: Math.round(height),
-                confidence: confidence,
-                class: 'ESP32'
-              });
-            }
-          }
-        }
-      } else {
-        console.warn('⚠️ Unexpected output format:', shape);
-        console.log('🔬 Raw data sample:', Array.from(data.slice(0, 50)));
+    // Handle YOLOv8 output format: [1, 8400, 85] or [1, 85, 8400]
+    let numDetections = 0;
+    let featuresPerDetection = 0;
+    
+    if (shape.length === 3 && shape[0] === 1 && shape[1] && shape[2]) {
+      if (shape[1] === 8400) {
+        // Format: [1, 8400, 85] 
+        numDetections = shape[1];
+        featuresPerDetection = shape[2];
+        console.log('📋 Detected format: [1, 8400, 85]');
+      } else if (shape[2] === 8400) {
+        // Format: [1, 85, 8400]
+        numDetections = shape[2];
+        featuresPerDetection = shape[1];
+        console.log('📋 Detected format: [1, 85, 8400]');
       }
-    } else {
-      console.warn('⚠️ Unexpected tensor dimensions:', shape);
+    }
+    
+    if (numDetections > 0 && featuresPerDetection >= 5) {
+      for (let i = 0; i < numDetections; i++) {
+        let x, y, w, h, objectness;
+        
+        if (shape[1] === 8400 && shape[2]) {
+          // Format: [1, 8400, 85]
+          x = data[i * shape[2] + 0];
+          y = data[i * shape[2] + 1];
+          w = data[i * shape[2] + 2];
+          h = data[i * shape[2] + 3];
+          objectness = data[i * shape[2] + 4];
+        } else {
+          // Format: [1, 85, 8400]
+          x = data[i + 0 * numDetections];
+          y = data[i + 1 * numDetections];
+          w = data[i + 2 * numDetections];
+          h = data[i + 3 * numDetections];
+          objectness = data[i + 4 * numDetections];
+        }
+        
+        // Apply sigmoid to objectness if needed
+        const confidence = objectness > 1 ? 1 / (1 + Math.exp(-objectness)) : Math.max(0, Math.min(1, objectness));
+        
+        if (confidence > confThreshold) {
+          // Convert center coordinates to corner coordinates
+          const centerX = x * originalWidth;
+          const centerY = y * originalHeight;
+          const width = w * originalWidth;
+          const height = h * originalHeight;
+          
+          const left = Math.max(0, centerX - width / 2);
+          const top = Math.max(0, centerY - height / 2);
+          
+          // Validate detection
+          if (width > 10 && height > 10 && 
+              left + width <= originalWidth && top + height <= originalHeight) {
+            
+            detections.push({
+              x: Math.round(left),
+              y: Math.round(top),
+              width: Math.round(width),
+              height: Math.round(height),
+              confidence: confidence,
+              class: 'ESP32'
+            });
+          }
+        }
+      }
     }
 
     console.log(`🎯 Found ${detections.length} ESP32 detections (threshold: ${confThreshold})`);
@@ -408,11 +316,6 @@ class MLService {
     const union = area1 + area2 - intersection;
     
     return intersection / union;
-  }
-
-  // Get device capabilities
-  getDeviceCapabilities(): DeviceCapabilities {
-    return this.deviceCapabilities;
   }
 
   // Cleanup
