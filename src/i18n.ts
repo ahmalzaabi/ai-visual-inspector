@@ -4,7 +4,7 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   en: {
     translation: {
-      title: "AI Advanced Vision System",
+      title: "AI Computer Vision System",
       subtitle: "AI-powered visual inspection platform",
       features: {
         assembly: "Assembly Verification",
@@ -51,7 +51,7 @@ const resources = {
       },
       main: {
         welcome: "Next-Generation AI Vision Platform",
-        tagline: "Experience the convergence of cutting-edge technologies - where Artificial Intelligence meets Computer Vision, Machine Learning fuses with Augmented Reality, and Deep Neural Networks power real-time industrial inspection. Built for the future of intelligent automation with precision that exceeds human capability.",
+        tagline: "Leveraging the immense power of artificial intelligence and machine learning, this software allows everyday users to create simple, world-class defect detection solutions for visual inspection.",
         description: "Advanced AI-powered visual inspection platform for industrial automation and quality control.",
         techHighlights: {
           ar: "Augmented Reality",
@@ -65,10 +65,10 @@ const resources = {
           vision: "Computer Vision"
         },
         navigation: {
-          features: "AI Detection Features",
-          featuresDesc: "Explore advanced computer vision tools powered by YOLO models for assembly verification, quality control, and predictive maintenance",
-          analytics: "Performance Analytics",
-          analyticsDesc: "Deep insights into model performance, inference metrics, and detection accuracy to optimize your AI workflows"
+          missions: "Missions",
+          missionsDesc: "Access and manage inspection missions with AI-powered computer vision tools for assembly verification, quality control, and predictive maintenance",
+          admin: "Admin Panel",
+          adminDesc: "Administrative dashboard for system configuration, user management, performance monitoring, and advanced settings"
         },
         stats: {
           features: "Features",
@@ -117,7 +117,7 @@ const resources = {
         roadmap: {
           title: "Development Roadmap",
           phase1: "Phase 1: Core AI Features",
-          phase1Desc: "Basic computer vision features with ESP32 detection and real-time YOLO inference",
+          phase1Desc: "Basic computer vision features with real-time AI inference and analysis",
           phase2: "Phase 2: Enhanced Models", 
           phase2Desc: "Additional neural networks, improved accuracy, and performance optimizations",
           phase3: "Phase 3: Analytics Platform",
@@ -140,7 +140,7 @@ const resources = {
   },
   ar: {
     translation: {
-      title: "نظام الرؤية المتقدم بالذكاء الاصطناعي",
+      title: "نظام الرؤية الحاسوبية المدعوم بالذكاء الاصطناعي",
       subtitle: "منصة الفحص البصري المدعومة بالذكاء الاصطناعي",
       features: {
         assembly: "التحقق من التجميع",
@@ -187,7 +187,7 @@ const resources = {
       },
       main: {
         welcome: "منصة الرؤية الذكية للجيل القادم", 
-        tagline: "اختبر تلاقي التقنيات المتطورة - حيث يلتقي الذكاء الاصطناعي مع الرؤية الحاسوبية، ويندمج التعلم الآلي مع الواقع المعزز، وتُشغل الشبكات العصبية العميقة الفحص الصناعي الفوري. مُصمم لمستقبل الأتمتة الذكية بدقة تفوق القدرة البشرية.",
+        tagline: "باستخدام القوة الهائلة للذكاء الاصطناعي والتعلم الآلي، يتيح هذا البرنامج للمستخدمين العاديين إنشاء حلول بسيطة وعالمية المستوى لكشف العيوب في الفحص البصري.",
         description: "منصة فحص بصري متقدمة مدعومة بالذكاء الاصطناعي للأتمتة الصناعية ومراقبة الجودة.",
         techHighlights: {
           ar: "الواقع المعزز",
@@ -201,10 +201,10 @@ const resources = {
           vision: "الرؤية الحاسوبية"
         },
         navigation: {
-          features: "ميزات الكشف بالذكاء الاصطناعي",
-          featuresDesc: "استكشف أدوات الرؤية الحاسوبية المتقدمة المدعومة بنماذج YOLO للتحقق من التجميع ومراقبة الجودة والصيانة التنبؤية",
-          analytics: "تحليلات الأداء",
-          analyticsDesc: "رؤى عميقة حول أداء النماذج ومقاييس الاستنتاج ودقة الكشف لتحسين سير عمل الذكاء الاصطناعي"
+          missions: "المهام",
+          missionsDesc: "الوصول إلى وإدارة مهام الفحص باستخدام أدوات الرؤية الحاسوبية المدعومة بالذكاء الاصطناعي للتحقق من التجميع ومراقبة الجودة والصيانة التنبؤية",
+          admin: "الإدارة",
+          adminDesc: "لوحة تحكم إدارية لتكوين النظام وإدارة المستخدمين ومراقبة الأداء والإعدادات المتقدمة"
         },
         stats: {
           features: "الميزات",
@@ -253,7 +253,7 @@ const resources = {
         roadmap: {
           title: "خارطة طريق التطوير",
           phase1: "المرحلة الأولى: ميزات الذكاء الاصطناعي الأساسية",
-          phase1Desc: "ميزات الرؤية الحاسوبية الأساسية مع كشف ESP32 واستنتاج YOLO الفوري",
+          phase1Desc: "ميزات الرؤية الحاسوبية الأساسية مع الاستنتاج والتحليل الفوري للذكاء الاصطناعي",
           phase2: "المرحلة الثانية: نماذج محسنة",
           phase2Desc: "شبكات عصبية إضافية ودقة محسنة وتحسينات الأداء",
           phase3: "المرحلة الثالثة: منصة التحليلات",

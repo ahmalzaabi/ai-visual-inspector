@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 
 interface MainPageProps {
-  onNavigate: (page: 'features' | 'analytics') => void;
+  onNavigate: (page: 'missions' | 'admin') => void;
 }
 
 const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
@@ -31,7 +31,7 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
         <div className="features-grid">
           <div 
             className="feature-card"
-            onClick={() => onNavigate('features')}
+            onClick={() => onNavigate('missions')}
           >
             <div className="feature-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,25 +39,25 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
               </svg>
             </div>
             <div className="feature-content">
-              <h3 className="feature-title">{t('main.navigation.features')}</h3>
-              <p className="feature-description">Advanced AI detection capabilities</p>
+              <h3 className="feature-title">{t('main.navigation.missions')}</h3>
+              <p className="feature-description">{t('main.navigation.missionsDesc')}</p>
             </div>
           </div>
 
           <div 
             className="feature-card analytics-feature"
-            onClick={() => onNavigate('analytics')}
+            onClick={() => onNavigate('admin')}
           >
             <div className="feature-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 3V21H21M7 14L12 9L16 13L21 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <div className="feature-content">
-              <h3 className="feature-title">{t('main.navigation.analytics')}</h3>
-              <p className="feature-description">Performance insights and metrics</p>
-              <span className="coming-soon-badge">{t('common.comingSoon')}</span>
-            </div>
+                         <div className="feature-content">
+               <h3 className="feature-title">{t('main.navigation.admin')}</h3>
+               <p className="feature-description">{t('main.navigation.adminDesc')}</p>
+             </div>
           </div>
         </div>
 

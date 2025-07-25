@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 
-// Simple ESP32 Detection Types
+// ESP32 Detection Types
 export interface ESP32Detection {
   x: number;
   y: number;
@@ -52,56 +52,66 @@ function getDeviceCapabilities(): DeviceCapabilities {
   };
 }
 
-// Simplified ML Service for ESP32 Only
+// Enhanced ML Service with ESP32 Detection
 class MLService {
   private esp32Model: tf.GraphModel | null = null;
   private isInitialized = false;
   private deviceCapabilities = getDeviceCapabilities();
 
   constructor() {
-    console.log('🔧 ESP32 ML Service initialized for device:', {
-      isIOSPWA: this.deviceCapabilities.isIOSPWA,
-      isIOSDevice: this.deviceCapabilities.isIOSDevice,
-      maxMemoryMB: this.deviceCapabilities.maxMemoryMB
-    });
+    console.log('🔧 ML Service initialized with ESP32 detection');
   }
 
-  // Initialize ESP32 Model
-  async initializeESP32Model(): Promise<void> {
+  // Initialize TensorFlow backend
+  async initializeTensorFlow(): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log('🚀 Loading ESP32 detection model...');
+    console.log('🚀 Initializing TensorFlow...');
     
     try {
       await tf.ready();
       
-      // iOS Safari specific WebGL setup
       if (this.deviceCapabilities.isIOSDevice) {
         try {
           await tf.setBackend('webgl');
-          // Conservative iOS WebGL settings
           tf.env().set('WEBGL_VERSION', 1);
           tf.env().set('WEBGL_FORCE_F16_TEXTURES', false);
-          tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', -1);
-          tf.env().set('WEBGL_MAX_TEXTURE_SIZE', 2048);
-          console.log('🍎 iOS WebGL backend initialized');
         } catch (webglError) {
-          console.warn('⚠️ WebGL failed on iOS, using CPU:', webglError);
           await tf.setBackend('cpu');
         }
       } else {
         await tf.setBackend('webgl');
       }
-
-      // Load ESP32 model
-      const modelUrl = '/models/esp32/model.json';
-      this.esp32Model = await this.loadModelWithRetry(modelUrl);
-      
-      // Test model
-      await this.testModel();
       
       this.isInitialized = true;
-      console.log('✅ ESP32 model ready!');
+      console.log('✅ TensorFlow backend ready');
+      
+    } catch (error) {
+      console.error('❌ TensorFlow initialization failed:', error);
+      throw error;
+    }
+  }
+
+  // Initialize ESP32 Detection Model
+  async initializeESP32Model(): Promise<void> {
+    if (this.esp32Model) return;
+
+    console.log('🚀 Loading ESP32 detection model...');
+    
+    try {
+      await this.initializeTensorFlow();
+      
+      const modelUrl = '/models/esp32/model.json';
+      this.esp32Model = await tf.loadGraphModel(modelUrl);
+      
+      // Warm up the model with a test input
+      const testInput = tf.zeros([1, 640, 640, 3]);
+      const output = this.esp32Model.predict(testInput) as tf.Tensor;
+      console.log('Model output shape:', output.shape);
+      testInput.dispose();
+      output.dispose();
+      
+      console.log('✅ ESP32 model ready');
       
     } catch (error) {
       console.error('❌ ESP32 model loading failed:', error);
@@ -109,95 +119,45 @@ class MLService {
     }
   }
 
-  // Load model with retry logic
-  private async loadModelWithRetry(url: string): Promise<tf.GraphModel> {
-    const maxRetries = 3;
-    let lastError: Error | null = null;
+  // ESP32 Detection Function
+  async detectESP32(canvas: HTMLCanvasElement, videoElement?: HTMLVideoElement): Promise<ESP32Analysis> {
+    if (!this.esp32Model) {
+      await this.initializeESP32Model();
+    }
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`📥 Loading ESP32 model (attempt ${attempt}/${maxRetries})...`);
+    try {
+      // Prepare input tensor
+      let inputTensor: tf.Tensor4D;
+      if (videoElement) {
+        // Create temporary canvas for video frame
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        if (!tempCtx) throw new Error('Cannot get canvas context');
         
-        const loadOptions: tf.io.LoadOptions = {
-          requestInit: {
-            cache: 'default',
-            mode: 'cors'
-          }
-        };
-
-        const model = await tf.loadGraphModel(url, loadOptions);
-        console.log(`✅ ESP32 model loaded successfully on attempt ${attempt}`);
-        return model;
+        tempCanvas.width = 640;
+        tempCanvas.height = 640;
+        tempCtx.drawImage(videoElement, 0, 0, 640, 640);
         
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`⚠️ Load attempt ${attempt} failed:`, error);
-        
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
+        inputTensor = tf.browser.fromPixels(tempCanvas)
+          .toFloat()
+          .div(255.0)
+          .expandDims(0) as tf.Tensor4D;
+      } else {
+        inputTensor = tf.browser.fromPixels(canvas)
+          .resizeBilinear([640, 640])
+          .toFloat()
+          .div(255.0)
+          .expandDims(0) as tf.Tensor4D;
       }
-    }
-    
-    throw lastError || new Error('Failed to load ESP32 model after all retries');
-  }
-
-  // Test model inference
-  private async testModel(): Promise<void> {
-    if (!this.esp32Model) throw new Error('ESP32 model not loaded');
-    
-    try {
-      const inputSize = this.deviceCapabilities.isIOSDevice ? 416 : 640;
-      const testInput = tf.zeros([1, inputSize, inputSize, 3]);
-      const output = this.esp32Model.predict(testInput) as tf.Tensor;
-      
-      console.log('🧪 ESP32 model test - Output shape:', output.shape);
-      
-      // Cleanup
-      testInput.dispose();
-      output.dispose();
-      
-    } catch (error) {
-      console.error('❌ ESP32 model test failed:', error);
-      throw error;
-    }
-  }
-
-  // Main ESP32 Detection Function
-  async detectESP32(canvas: HTMLCanvasElement): Promise<ESP32Analysis> {
-    if (!this.isInitialized || !this.esp32Model) {
-      console.warn('⚠️ ESP32 model not initialized');
-      return {
-        detections: [],
-        esp32Detected: false,
-        confidenceScore: 0,
-        status: 'unknown'
-      };
-    }
-
-    try {
-      // Prepare input with iOS-optimized size
-      const inputSize = this.deviceCapabilities.isIOSDevice ? 416 : 640;
-      const inputTensor = tf.tidy(() => {
-        const rawImage = tf.browser.fromPixels(canvas);
-        const resized = rawImage.resizeNearestNeighbor([inputSize, inputSize]);
-        const normalized = resized.div(255.0);
-        
-        rawImage.dispose();
-        resized.dispose();
-        
-        return normalized.expandDims(0);
-      });
 
       // Run inference
-      const predictions = this.esp32Model.predict(inputTensor) as tf.Tensor;
+      const predictions = this.esp32Model!.predict(inputTensor) as tf.Tensor;
       
-      // Process results
-      const analysis = await this.processESP32Output(
-        predictions,
-        canvas.width,
-        canvas.height,
-        inputSize
+      // Parse YOLOv8 output
+      const analysis = await this.parseYOLOv8Output(
+        predictions, 
+        canvas.width, 
+        canvas.height
       );
 
       // Cleanup
@@ -207,7 +167,7 @@ class MLService {
       return analysis;
 
     } catch (error) {
-      console.error('❌ ESP32 detection failed:', error);
+      console.error('ESP32 detection failed:', error);
       return {
         detections: [],
         esp32Detected: false,
@@ -217,68 +177,137 @@ class MLService {
     }
   }
 
-  // Process ESP32 Detection Output
-  private async processESP32Output(
+  // Parse YOLOv8 output format
+  private async parseYOLOv8Output(
     predictions: tf.Tensor,
     originalWidth: number,
-    originalHeight: number,
-    inputSize: number
+    originalHeight: number
   ): Promise<ESP32Analysis> {
     const data = await predictions.data();
-    const detections: ESP32Detection[] = [];
+    const shape = predictions.shape;
     
-    // YOLO output format: [x, y, w, h, confidence]
-    const numBoxes = predictions.shape[1] || 0;
-    const confThreshold = 0.5;
-
-    if (numBoxes === 0) {
+    console.log('Model output shape:', shape);
+    
+    // YOLOv8 typically outputs [1, 84, 8400] or [1, 5, 8400] format
+    // Assuming [1, 5, 8400] format: [x, y, w, h, confidence]
+    if (shape.length !== 3 || shape[0] !== 1) {
+      console.error('Unexpected output shape:', shape);
       return {
         detections: [],
         esp32Detected: false,
         confidenceScore: 0,
-        status: 'not_detected'
+        status: 'unknown'
       };
     }
 
-    for (let i = 0; i < numBoxes; i++) {
-      const confidence = data[4 * numBoxes + i];
+    const numAnchors = shape[2]; // 8400
+    const detections: ESP32Detection[] = [];
+    const confThreshold = 0.4; // Lower threshold for better detection
+    
+    // Parse detections based on output format
+    for (let i = 0; i < numAnchors; i++) {
+      const x = data[i];                    // x center (normalized 0-1)
+      const y = data[numAnchors + i];       // y center (normalized 0-1)  
+      const w = data[2 * numAnchors + i];   // width (normalized 0-1)
+      const h = data[3 * numAnchors + i];   // height (normalized 0-1)
+      const conf = data[4 * numAnchors + i]; // confidence
+      
+      // Apply sigmoid if needed (check if confidence is already sigmoid)
+      const confidence = conf > 1 ? 1 / (1 + Math.exp(-conf)) : conf;
       
       if (confidence > confThreshold) {
-        // Get bbox coordinates with dynamic input size scaling
-        const cx = data[0 * numBoxes + i] * originalWidth / inputSize;
-        const cy = data[1 * numBoxes + i] * originalHeight / inputSize;
-        const w = data[2 * numBoxes + i] * originalWidth / inputSize;
-        const h = data[3 * numBoxes + i] * originalHeight / inputSize;
+        // Convert normalized coordinates to pixel coordinates
+        const centerX = x * originalWidth;
+        const centerY = y * originalHeight;
+        const width = w * originalWidth;
+        const height = h * originalHeight;
         
-        // Convert to corner format
-        const x = Math.max(0, cx - w/2);
-        const y = Math.max(0, cy - h/2);
-        const width = Math.min(originalWidth - x, w);
-        const height = Math.min(originalHeight - y, h);
-
-        detections.push({
-          x,
-          y,
-          width,
-          height,
-          confidence,
-          class: 'esp32'
-        });
+        // Convert center coordinates to top-left coordinates
+        const left = Math.max(0, centerX - width / 2);
+        const top = Math.max(0, centerY - height / 2);
+        
+        // Validate detection
+        if (width > 20 && height > 20 && 
+            left + width <= originalWidth && top + height <= originalHeight) {
+          
+          detections.push({
+            x: Math.round(left),
+            y: Math.round(top),
+            width: Math.round(width),
+            height: Math.round(height),
+            confidence: confidence,
+            class: 'ESP32'
+          });
+        }
       }
     }
 
-    // Analyze results
-    const esp32Detected = detections.length > 0;
-    const confidenceScore = esp32Detected 
-      ? Math.max(...detections.map(d => d.confidence))
+    console.log(`Found ${detections.length} ESP32 detections`);
+    
+    // Apply Non-Maximum Suppression
+    const finalDetections = this.applyNMS(detections, 0.4);
+    
+    const avgConfidence = finalDetections.length > 0 
+      ? finalDetections.reduce((sum, det) => sum + det.confidence, 0) / finalDetections.length 
       : 0;
 
     return {
-      detections,
-      esp32Detected,
-      confidenceScore,
-      status: esp32Detected ? 'detected' : 'not_detected'
+      detections: finalDetections,
+      esp32Detected: finalDetections.length > 0,
+      confidenceScore: avgConfidence,
+      status: finalDetections.length > 0 ? 'detected' : 'not_detected'
     };
+  }
+
+  // Non-Maximum Suppression
+  private applyNMS(detections: ESP32Detection[], iouThreshold: number): ESP32Detection[] {
+    if (detections.length === 0) return [];
+    
+    // Sort by confidence (highest first)
+    detections.sort((a, b) => b.confidence - a.confidence);
+    
+    const keep: ESP32Detection[] = [];
+    const suppressed = new Set<number>();
+    
+    for (let i = 0; i < detections.length; i++) {
+      if (suppressed.has(i)) continue;
+      
+      keep.push(detections[i]);
+      
+      // Suppress overlapping detections
+      for (let j = i + 1; j < detections.length; j++) {
+        if (suppressed.has(j)) continue;
+        
+        const iou = this.calculateIOU(detections[i], detections[j]);
+        if (iou > iouThreshold) {
+          suppressed.add(j);
+        }
+      }
+    }
+    
+    return keep;
+  }
+
+  // Calculate Intersection over Union
+  private calculateIOU(det1: ESP32Detection, det2: ESP32Detection): number {
+    const x1 = Math.max(det1.x, det2.x);
+    const y1 = Math.max(det1.y, det2.y);
+    const x2 = Math.min(det1.x + det1.width, det2.x + det2.width);
+    const y2 = Math.min(det1.y + det1.height, det2.y + det2.height);
+    
+    if (x2 <= x1 || y2 <= y1) return 0;
+    
+    const intersection = (x2 - x1) * (y2 - y1);
+    const area1 = det1.width * det1.height;
+    const area2 = det2.width * det2.height;
+    const union = area1 + area2 - intersection;
+    
+    return intersection / union;
+  }
+
+  // Get device capabilities
+  getDeviceCapabilities(): DeviceCapabilities {
+    return this.deviceCapabilities;
   }
 
   // Cleanup
@@ -288,7 +317,6 @@ class MLService {
       this.esp32Model = null;
     }
     this.isInitialized = false;
-    console.log('🧹 ESP32 ML Service disposed');
   }
 
   // Status check

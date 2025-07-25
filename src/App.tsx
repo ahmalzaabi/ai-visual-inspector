@@ -4,14 +4,14 @@ import FeaturesPage from './components/FeaturesPage'
 import AnalyticsPage from './components/AnalyticsPage'
 import './App.css'
 
-type PageType = 'main' | 'features' | 'analytics'
+type PageType = 'main' | 'missions' | 'admin'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('main')
-
+  
   // ML services will initialize on demand
   useEffect(() => {
-    console.log('🚀 AI Visual Inspector loaded - ESP32 model will load when needed');
+    console.log('🚀 AI Visual Inspector loaded');
   }, []);
 
   const handleNavigation = (page: PageType) => {
@@ -28,11 +28,11 @@ function App() {
         <MainPage onNavigate={handleNavigation} />
       )}
       
-      {currentPage === 'features' && (
+      {currentPage === 'missions' && (
         <FeaturesPage onBack={handleBackToMain} />
       )}
       
-      {currentPage === 'analytics' && (
+      {currentPage === 'admin' && (
         <AnalyticsPage onBack={handleBackToMain} />
       )}
     </>

@@ -1,9 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mlService } from '../services/mlService';
-import type { ESP32Analysis } from '../services/mlService';
 import FeatureCard from './FeatureCard';
-import ErrorBoundary from './ErrorBoundary';
 
 interface FeaturesPageProps {
   onBack: () => void;
@@ -13,17 +11,13 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number | undefined>(undefined);
-  
-  // State management
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDetecting, setIsDetecting] = useState(false);
-  const [detectionResults, setDetectionResults] = useState<ESP32Analysis | null>(null);
-  const [isModelLoading, setIsModelLoading] = useState(false);
+  const [detectionCount, setDetectionCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Features configuration
   const features = [
@@ -84,255 +78,151 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
   ];
 
-  // Camera setup
-  const startCamera = useCallback(async () => {
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const startCamera = async () => {
     try {
       setError(null);
-      
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('Camera not supported in this browser');
-      }
+      setIsLoading(true);
 
-      // Stop any existing streams first
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-        streamRef.current = null;
-      }
-
-      console.log('📱 Requesting camera access...');
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment',
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 24, max: 30 }
-        },
-        audio: false
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'environment'
+        }
       });
-      
-      streamRef.current = mediaStream;
-      setIsPlaying(true);
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        
-        videoRef.current.onloadedmetadata = () => {
-          console.log('📹 Video metadata loaded');
-          if (videoRef.current) {
-            videoRef.current.play().catch(error => {
-              console.warn('Video play error:', error);
-            });
-          }
-        };
-        
-        videoRef.current.oncanplay = () => {
-          console.log('📹 Video ready to play');
-        };
-
-        videoRef.current.playsInline = true;
-        videoRef.current.muted = true;
-        videoRef.current.autoplay = true;
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setIsPlaying(true);
       }
-
-      console.log('✅ Camera started successfully');
-    } catch (error) {
-      console.error('❌ Camera error:', error);
-      
-      let errorMessage = 'Failed to start camera';
-      
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          errorMessage = 'Camera permission denied. Please allow camera access and try again.';
-        } else if (error.name === 'NotFoundError') {
-          errorMessage = 'No camera found on this device.';
-        } else if (error.name === 'NotSupportedError') {
-          errorMessage = 'Camera not supported in this browser.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      setError(errorMessage);
-    }
-  }, []);
-
-  const stopCamera = useCallback(() => {
-    console.log('🛑 Stopping camera...');
-    
-    // Stop detection
-    setIsDetecting(false);
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-    
-    // Stop media stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track: MediaStreamTrack) => {
-        track.stop();
-        console.log(`🔇 Stopped ${track.kind} track`);
-      });
-      streamRef.current = null;
-    }
-    
-    // Reset states
-    setIsPlaying(false);
-    setDetectionResults(null);
-    
-    // Clear overlay
-    if (overlayCanvasRef.current) {
-      const overlayContext = overlayCanvasRef.current.getContext('2d');
-      if (overlayContext) {
-        overlayContext.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
-      }
-    }
-    
-    console.log('✅ Camera stopped');
-  }, []);
-
-  // Start detection for ESP32 (works for all features)
-  const startDetection = async () => {
-    try {
-      setIsModelLoading(true);
-      setError(null);
-      
-      // Initialize ESP32 model
-      await mlService.initializeESP32Model();
-      
-      setIsDetecting(true);
-      setIsModelLoading(false);
-      
-      console.log('✅ Detection started');
-      
     } catch (err) {
-      console.error('Detection failed:', err);
-      setError('Failed to start detection');
-      setIsModelLoading(false);
+      setError('Camera access failed. Please check permissions.');
+      console.error('Camera error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Stop detection
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsPlaying(false);
+    stopDetection();
+  };
+
   const stopDetection = () => {
-    setIsDetecting(false);
-    setDetectionResults(null);
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current);
+      detectionIntervalRef.current = null;
     }
-    console.log('🛑 Detection stopped');
+    setIsDetecting(false);
+    
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
   };
 
-  // Detection loop
-  useEffect(() => {
-    const runDetection = async () => {
-      if (!isDetecting || !videoRef.current || !canvasRef.current || !overlayCanvasRef.current) {
-        return;
+  // ESP32 Detection Function for Assembly Verification
+  const performESP32Detection = async () => {
+    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly') return;
+
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      if (video.readyState < 2) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Run ESP32 detection
+      const analysis = await mlService.detectESP32(canvas, video);
+      setDetectionCount(analysis.detections.length);
+
+      // Draw simple tracking boxes
+      if (analysis.detections.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+        ctx.font = '14px Arial';
+        
+        analysis.detections.forEach((detection) => {
+          const { x, y, width, height, confidence } = detection;
+          
+          // Draw bounding box
+          ctx.strokeRect(x, y, width, height);
+          ctx.fillRect(x, y, width, height);
+          
+          // Draw label
+          ctx.fillStyle = '#00ff00';
+          ctx.fillText(
+            `ESP32 ${(confidence * 100).toFixed(0)}%`, 
+            x, 
+            y - 5
+          );
+        });
+        
+        ctx.restore();
       }
 
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const overlayCanvas = overlayCanvasRef.current;
-      const context = canvas.getContext('2d');
-      const overlayContext = overlayCanvas.getContext('2d');
+    } catch (err) {
+      console.error('ESP32 detection failed:', err);
+      setDetectionCount(0);
+    }
+  };
 
-      if (context && overlayContext && video.readyState >= 2) {
-        try {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          overlayCanvas.width = video.videoWidth;
-          overlayCanvas.height = video.videoHeight;
-          
-          context.drawImage(video, 0, 0);
+  const startDetection = async () => {
+    if (isDetecting || !videoRef.current || activeFeature !== 'assembly') return;
 
-          // Run ESP32 detection
-          const analysis = await mlService.detectESP32(canvas);
-          setDetectionResults(analysis);
-          
-          // Draw detection overlay
-          drawDetectionOverlay(overlayContext, analysis, canvas.width, canvas.height);
-          
-        } catch (err) {
-          console.error('Detection failed:', err);
-          setError('Detection failed');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      if (videoRef.current.readyState < 2) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (videoRef.current.readyState < 2) {
+          throw new Error('Video stream not ready. Please ensure camera is working.');
         }
       }
 
-      if (isDetecting) {
-        animationRef.current = requestAnimationFrame(runDetection);
+      if (!mlService.isReady()) {
+        await mlService.initializeESP32Model();
       }
-    };
 
-    if (isDetecting) {
-      runDetection();
+      setIsDetecting(true);
+      
+      // Start detection loop at 5 FPS for optimal performance
+      const detectionInterval = 200;
+      detectionIntervalRef.current = setInterval(performESP32Detection, detectionInterval);
+      
+      await performESP32Detection();
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(`Failed to start detection: ${errorMessage}`);
+      setIsDetecting(false);
+    } finally {
+      setIsLoading(false);
     }
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [isDetecting]);
-
-  // Draw detection overlay
-  const drawDetectionOverlay = (
-    context: CanvasRenderingContext2D,
-    analysis: ESP32Analysis,
-    width: number,
-    height: number
-  ) => {
-    context.clearRect(0, 0, width, height);
-    
-    // Draw detections with different colors based on feature
-    analysis.detections.forEach((detection) => {
-      const { x, y, width: w, height: h, confidence } = detection;
-      
-      // Different colors for different features
-      let strokeColor = '#FF8C00'; // Default orange for ESP32
-      let fillColor = 'rgba(255, 140, 0, 0.1)';
-      
-      switch (activeFeature) {
-        case 'assembly':
-          strokeColor = '#FF8C00'; // Orange
-          fillColor = 'rgba(255, 140, 0, 0.1)';
-          break;
-        case 'inspection':
-          strokeColor = '#10B981'; // Green
-          fillColor = 'rgba(16, 185, 129, 0.1)';
-          break;
-        case 'repair':
-          strokeColor = '#EF4444'; // Red
-          fillColor = 'rgba(239, 68, 68, 0.1)';
-          break;
-        case 'maintenance':
-          strokeColor = '#8B5CF6'; // Purple
-          fillColor = 'rgba(139, 92, 246, 0.1)';
-          break;
-        case 'quality':
-          strokeColor = '#06B6D4'; // Cyan
-          fillColor = 'rgba(6, 182, 212, 0.1)';
-          break;
-      }
-      
-      // Fill detection area
-      context.fillStyle = fillColor;
-      context.fillRect(x, y, w, h);
-      
-      // Draw bounding box
-      context.strokeStyle = strokeColor;
-      context.lineWidth = 3;
-      context.strokeRect(x, y, w, h);
-      
-      // Draw confidence label
-      context.fillStyle = strokeColor;
-      context.font = '16px Arial';
-      const label = `${activeFeature?.toUpperCase()} ${Math.round(confidence * 100)}%`;
-      const labelWidth = context.measureText(label).width;
-      
-      // Background for label
-      context.fillRect(x, y - 25, labelWidth + 10, 20);
-      
-      // Label text
-      context.fillStyle = 'white';
-      context.fillText(label, x + 5, y - 8);
-    });
   };
 
   const handleFeatureClick = (featureId: string) => {
@@ -358,14 +248,13 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           {/* Features Grid */}
           <section className="features-section">
             <div className="features-grid">
-              {features.map((feature) => (
+              {features.map((featureItem) => (
                 <FeatureCard
-                  key={feature.id}
-                  icon={feature.icon}
-                  feature={feature.feature}
-                  description={feature.description}
-                  isActive={activeFeature === feature.id}
-                  onClick={() => handleFeatureClick(feature.id)}
+                  key={featureItem.id}
+                  icon={featureItem.icon}
+                  feature={featureItem.feature}
+                  description={featureItem.description}
+                  onClick={() => handleFeatureClick(featureItem.id)}
                 />
               ))}
             </div>
@@ -373,165 +262,90 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         </>
       )}
 
-      {activeFeature && (
-        <>
-          {/* Feature Header */}
-          <div className="page-header">
-            <button className="btn btn-back" onClick={() => setActiveFeature(null)}>
+      {/* Assembly Verification Feature with ESP32 Detection */}
+      {activeFeature === 'assembly' && (
+        <div className="assembly-feature">
+          <div className="feature-header">
+            <button className="btn btn-back" onClick={() => setActiveFeature('')}>
               ← {t('actions.back')}
             </button>
-            <h1 className="page-title">
-              {features.find(f => f.id === activeFeature)?.feature}
-            </h1>
+            <h2 className="feature-title">
+              🔧 {t('features.assembly')}
+            </h2>
           </div>
 
-          {/* Error Display */}
+          <div className="video-container">
+            <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
+            <canvas ref={canvasRef} className="detection-overlay" />
+          </div>
+
+          <div className="controls">
+            <button 
+              className={`btn ${isPlaying ? 'btn-secondary' : 'btn-primary'}`}
+              onClick={isPlaying ? stopCamera : startCamera}
+              disabled={isLoading}
+            >
+              {isLoading ? '⏳' : (isPlaying ? '📷 Stop Camera' : '📷 Start Camera')}
+            </button>
+            
+            {isPlaying && (
+              <button 
+                className={`btn ${isDetecting ? 'btn-danger' : 'btn-success'}`}
+                onClick={isDetecting ? stopDetection : startDetection}
+                disabled={isLoading}
+              >
+                {isLoading ? '⏳ Loading...' : (isDetecting ? '⏹️ Stop Detection' : '🚀 Start Detection')}
+              </button>
+            )}
+          </div>
+
+          {/* Simple Detection Count Display */}
+          <div className="detection-status">
+            <div className="detection-count">
+              ESP32 Boards Detected: <span className={detectionCount > 0 ? 'detected' : 'none'}>{detectionCount}</span>
+            </div>
+          </div>
+
           {error && (
             <div className="error-message">
-              <div className="error-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div className="error-content">
-                <h4>{t('camera.error')}</h4>
-                <p>{error}</p>
-                <div className="error-actions">
-                  <button className="btn btn-secondary btn-sm" onClick={() => setError(null)}>
-                    Dismiss
-                  </button>
-                  <button className="btn btn-primary btn-sm" onClick={startCamera}>
-                    Retry Camera
-                  </button>
-                </div>
-              </div>
+              <span className="error-icon">⚠️</span>
+              {error}
             </div>
           )}
+        </div>
+      )}
 
-          <ErrorBoundary>
-            <div className="camera-container">
-              {/* Camera placeholder */}
-              <div className={`camera-placeholder ${isPlaying ? 'hidden' : ''}`}>
-                <div className="placeholder-content">
-                  <div className="camera-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                  </div>
-                  <h3>{t('camera.start')}</h3>
-                </div>
-                <button 
-                  className="btn btn-primary btn-large" 
-                  onClick={startCamera}
-                  disabled={isPlaying}
-                >
-                  {t('camera.start')}
-                </button>
-              </div>
+      {/* Other Features Interface */}
+      {activeFeature && activeFeature !== 'assembly' && (
+        <div className="feature-interface">
+          <div className="feature-header">
+            <button className="btn btn-back" onClick={() => setActiveFeature('')}>
+              ← {t('actions.back')}
+            </button>
+            <h2 className="feature-title">
+              {features.find(f => f.id === activeFeature)?.feature}
+            </h2>
+          </div>
 
-              {/* Camera active */}
-              <div className={`camera-active ${!isPlaying ? 'hidden' : ''}`}>
-                <div className="video-container" style={{ position: 'relative' }}>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="video-feed"
-                    style={{
-                      objectFit: 'cover',
-                      width: '100%',
-                      height: '100%'
-                    }}
-                  />
-                  
-                  {/* Overlay canvas for real-time detection */}
-                  <canvas 
-                    ref={overlayCanvasRef}
-                    style={{ 
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      pointerEvents: 'none',
-                      zIndex: 5
-                    }}
-                  />
-                  
-                  {/* Hidden canvas for processing */}
-                  <canvas
-                    ref={canvasRef}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-                
-                <div className="camera-controls">
-                  {!isDetecting ? (
-                    <button 
-                      className="btn btn-primary"
-                      onClick={startDetection}
-                      disabled={isModelLoading}
-                    >
-                      {isModelLoading ? 'Loading Model...' : `Start ${activeFeature} Detection`}
-                    </button>
-                  ) : (
-                    <button 
-                      className="btn btn-danger"
-                      onClick={stopDetection}
-                    >
-                      Stop Detection
-                    </button>
-                  )}
-                  
-                  <button 
-                    className="btn btn-secondary" 
-                    onClick={stopCamera}
-                  >
-                    {t('actions.stop')}
-                  </button>
-                </div>
-              </div>
+          <div className="camera-section">
+            <div className="video-container">
+              <video ref={videoRef} autoPlay playsInline muted />
+              <canvas ref={canvasRef} className="detection-overlay" />
             </div>
 
-            {/* Detection Status Panel */}
-            {isDetecting && detectionResults && (
-              <div className="detection-panel">
-                <div className="panel-header">
-                  <h3>{activeFeature} Detection</h3>
-                  <div className="panel-stats">
-                    <span className="stat">Status: {detectionResults.status}</span>
-                    <span className="stat">Detections: {detectionResults.detections.length}</span>
-                  </div>
-                </div>
-                
-                {detectionResults.detections.length > 0 ? (
-                  <div className="detections-grid">
-                    {detectionResults.detections.map((detection, index) => (
-                      <div key={index} className="detection-item">
-                        <div className="detection-info">
-                          <span className="detection-class">{activeFeature?.toUpperCase()}</span>
-                          <span className="detection-confidence">
-                            {Math.round(detection.confidence * 100)}%
-                          </span>
-                        </div>
-                        <div className="detection-bbox">
-                          Position: ({Math.round(detection.x)}, {Math.round(detection.y)})
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="no-detections">
-                    <p>Looking for {activeFeature} components...</p>
-                    <p className="hint">Point camera at relevant objects</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </ErrorBoundary>
-        </>
+            <div className="controls">
+              <button 
+                className={`btn ${isPlaying ? 'btn-secondary' : 'btn-primary'}`}
+                onClick={isPlaying ? stopCamera : startCamera}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Loading...' : (isPlaying ? 'Stop Camera' : 'Start Camera')}
+              </button>
+            </div>
+
+            {error && <div className="error-message">{error}</div>}
+          </div>
+        </div>
       )}
     </div>
   );
