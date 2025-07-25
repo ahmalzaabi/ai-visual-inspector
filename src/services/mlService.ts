@@ -102,19 +102,37 @@ class MLService {
       await this.initializeTensorFlow();
       
       const modelUrl = '/models/esp32/model.json';
+      console.log('Loading model from:', modelUrl);
+      
       this.esp32Model = await tf.loadGraphModel(modelUrl);
       
       // Warm up the model with a test input
+      console.log('Warming up model...');
       const testInput = tf.zeros([1, 640, 640, 3]);
-      const output = this.esp32Model.predict(testInput) as tf.Tensor;
-      console.log('Model output shape:', output.shape);
+      const output = this.esp32Model.predict(testInput);
+      
+      // Handle both single tensor and array of tensors
+      let outputTensor: tf.Tensor;
+      if (Array.isArray(output)) {
+        outputTensor = output[0];
+        console.log('Model output shape (array):', output.map(t => t.shape));
+      } else {
+        outputTensor = output as tf.Tensor;
+        console.log('Model output shape (single):', outputTensor.shape);
+      }
+      
       testInput.dispose();
-      output.dispose();
+      if (Array.isArray(output)) {
+        output.forEach(t => t.dispose());
+      } else {
+        (output as tf.Tensor).dispose();
+      }
       
       console.log('✅ ESP32 model ready');
       
     } catch (error) {
       console.error('❌ ESP32 model loading failed:', error);
+      this.esp32Model = null;
       throw error;
     }
   }
@@ -123,6 +141,16 @@ class MLService {
   async detectESP32(canvas: HTMLCanvasElement, videoElement?: HTMLVideoElement): Promise<ESP32Analysis> {
     if (!this.esp32Model) {
       await this.initializeESP32Model();
+    }
+
+    if (!this.esp32Model) {
+      console.error('Model failed to initialize');
+      return {
+        detections: [],
+        esp32Detected: false,
+        confidenceScore: 0,
+        status: 'unknown'
+      };
     }
 
     try {
@@ -150,19 +178,35 @@ class MLService {
           .expandDims(0) as tf.Tensor4D;
       }
 
+      console.log('Input tensor shape:', inputTensor.shape);
+
       // Run inference
-      const predictions = this.esp32Model!.predict(inputTensor) as tf.Tensor;
+      const predictions = this.esp32Model.predict(inputTensor);
+      
+      // Handle different output formats
+      let predictionTensor: tf.Tensor;
+      if (Array.isArray(predictions)) {
+        predictionTensor = predictions[0];
+        console.log('Prediction shapes (array):', predictions.map(p => p.shape));
+      } else {
+        predictionTensor = predictions as tf.Tensor;
+        console.log('Prediction shape (single):', predictionTensor.shape);
+      }
       
       // Parse YOLOv8 output
       const analysis = await this.parseYOLOv8Output(
-        predictions, 
+        predictionTensor, 
         canvas.width, 
         canvas.height
       );
 
       // Cleanup
       inputTensor.dispose();
-      predictions.dispose();
+      if (Array.isArray(predictions)) {
+        predictions.forEach(p => p.dispose());
+      } else {
+        (predictions as tf.Tensor).dispose();
+      }
 
       return analysis;
 
@@ -187,57 +231,89 @@ class MLService {
     const shape = predictions.shape;
     
     console.log('Model output shape:', shape);
+    console.log('First 20 values:', Array.from(data.slice(0, 20)));
     
-    // YOLOv8 typically outputs [1, 84, 8400] or [1, 5, 8400] format
-    // Assuming [1, 5, 8400] format: [x, y, w, h, confidence]
-    if (shape.length !== 3 || shape[0] !== 1) {
-      console.error('Unexpected output shape:', shape);
-      return {
-        detections: [],
-        esp32Detected: false,
-        confidenceScore: 0,
-        status: 'unknown'
-      };
-    }
-
-    const numAnchors = shape[2]; // 8400
     const detections: ESP32Detection[] = [];
-    const confThreshold = 0.4; // Lower threshold for better detection
+    const confThreshold = 0.3; // Lower threshold for better detection
     
-    // Parse detections based on output format
-    for (let i = 0; i < numAnchors; i++) {
-      const x = data[i];                    // x center (normalized 0-1)
-      const y = data[numAnchors + i];       // y center (normalized 0-1)  
-      const w = data[2 * numAnchors + i];   // width (normalized 0-1)
-      const h = data[3 * numAnchors + i];   // height (normalized 0-1)
-      const conf = data[4 * numAnchors + i]; // confidence
-      
-      // Apply sigmoid if needed (check if confidence is already sigmoid)
-      const confidence = conf > 1 ? 1 / (1 + Math.exp(-conf)) : conf;
-      
-      if (confidence > confThreshold) {
-        // Convert normalized coordinates to pixel coordinates
-        const centerX = x * originalWidth;
-        const centerY = y * originalHeight;
-        const width = w * originalWidth;
-        const height = h * originalHeight;
+    // Handle different YOLOv8 output formats
+    if (shape.length === 3 && shape[0] === 1) {
+      // Format: [1, features, anchors]
+      if (shape[1] === 5 && shape[2] === 8400) {
+        // Format: [1, 5, 8400] - [x, y, w, h, conf]
+        const numAnchors = shape[2];
         
-        // Convert center coordinates to top-left coordinates
-        const left = Math.max(0, centerX - width / 2);
-        const top = Math.max(0, centerY - height / 2);
-        
-        // Validate detection
-        if (width > 20 && height > 20 && 
-            left + width <= originalWidth && top + height <= originalHeight) {
+        for (let i = 0; i < numAnchors; i++) {
+          const x = data[i];                    // x center (normalized 0-1)
+          const y = data[numAnchors + i];       // y center (normalized 0-1)  
+          const w = data[2 * numAnchors + i];   // width (normalized 0-1)
+          const h = data[3 * numAnchors + i];   // height (normalized 0-1)
+          const conf = data[4 * numAnchors + i]; // confidence
           
-          detections.push({
-            x: Math.round(left),
-            y: Math.round(top),
-            width: Math.round(width),
-            height: Math.round(height),
-            confidence: confidence,
-            class: 'ESP32'
-          });
+          // Apply sigmoid if needed (check if confidence is already sigmoid)
+          const confidence = conf > 1 ? 1 / (1 + Math.exp(-conf)) : Math.max(0, Math.min(1, conf));
+          
+          if (confidence > confThreshold) {
+            // Convert normalized coordinates to pixel coordinates
+            const centerX = x * originalWidth;
+            const centerY = y * originalHeight;
+            const width = w * originalWidth;
+            const height = h * originalHeight;
+            
+            // Convert center coordinates to top-left coordinates
+            const left = Math.max(0, centerX - width / 2);
+            const top = Math.max(0, centerY - height / 2);
+            
+            // Validate detection
+            if (width > 20 && height > 20 && 
+                left + width <= originalWidth && top + height <= originalHeight) {
+              
+              detections.push({
+                x: Math.round(left),
+                y: Math.round(top),
+                width: Math.round(width),
+                height: Math.round(height),
+                confidence: confidence,
+                class: 'ESP32'
+              });
+            }
+          }
+        }
+      } else if (shape[1] === 8400 && shape[2] === 5) {
+        // Format: [1, 8400, 5] - transposed
+        const numAnchors = shape[1];
+        
+        for (let i = 0; i < numAnchors; i++) {
+          const x = data[i * 5];       // x center
+          const y = data[i * 5 + 1];   // y center
+          const w = data[i * 5 + 2];   // width
+          const h = data[i * 5 + 3];   // height
+          const conf = data[i * 5 + 4]; // confidence
+          
+          const confidence = conf > 1 ? 1 / (1 + Math.exp(-conf)) : Math.max(0, Math.min(1, conf));
+          
+          if (confidence > confThreshold) {
+            const centerX = x * originalWidth;
+            const centerY = y * originalHeight;
+            const width = w * originalWidth;
+            const height = h * originalHeight;
+            
+            const left = Math.max(0, centerX - width / 2);
+            const top = Math.max(0, centerY - height / 2);
+            
+            if (width > 20 && height > 20 && 
+                left + width <= originalWidth && top + height <= originalHeight) {
+              
+              detections.push({
+                x: Math.round(left),
+                y: Math.round(top),
+                width: Math.round(width),
+                height: Math.round(height),
+                confidence: confidence,
+                class: 'ESP32'
+              });
+            }
+          }
         }
       }
     }
