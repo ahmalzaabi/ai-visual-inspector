@@ -27,7 +27,11 @@ const resources = {
         analyze: "Analyze",
         stop: "Stop",
         clear: "Clear",
-        back: "Back"
+        back: "Back",
+        next: "Next Step",
+        previous: "Back",
+        continue: "Continue to Step 2",
+        complete: "Complete Assembly"
       },
       status: {
         ready: "Ready",
@@ -44,6 +48,40 @@ const resources = {
         back: "Back",
         dismiss: "Dismiss",
         comingSoon: "Coming Soon"
+      },
+      assembly: {
+        progressTitle: "Assembly Progress",
+        detectionLabel: "ESP32 detected",
+        steps: {
+          step1: {
+            title: "Place ESP32 Boards",
+            description: "Position both ESP32 development boards",
+            requirement: "2 ESP32 boards detected"
+          },
+          step2: {
+            title: "Connect Power Supply",
+            description: "Connect 5V power adapter to both boards",
+            requirement: "Power connections verified"
+          },
+          step3: {
+            title: "Connect Data Cables", 
+            description: "Connect USB cables for data communication",
+            requirement: "Data connections established"
+          },
+          step4: {
+            title: "Final Verification",
+            description: "System test and configuration check",
+            requirement: "All systems operational"
+          }
+        },
+        status: {
+          step1Complete: "Step 1 Complete! {count} ESP32 boards detected",
+          anotherEsp32Needed: "Another ESP32 needed",
+          oneMoreRequired: "(1 more required)",
+          place2Boards: "Place 2 ESP32 boards to complete Step 1",
+          manualStep: "Manual step - Click \"Next\" when complete",
+          completionMessage: "🎉 Complete Assembly"
+        }
       },
       detection: {
         local_server: "Local Server",
@@ -163,7 +201,11 @@ const resources = {
         analyze: "تحليل",
         stop: "إيقاف",
         clear: "مسح",
-        back: "رجوع"
+        back: "رجوع",
+        next: "الخطوة التالية",
+        previous: "رجوع",
+        continue: "المتابعة إلى الخطوة 2",
+        complete: "إكمال التجميع"
       },
       status: {
         ready: "جاهز",
@@ -180,6 +222,40 @@ const resources = {
         back: "رجوع",
         dismiss: "إغلاق",
         comingSoon: "قريباً"
+      },
+      assembly: {
+        progressTitle: "تقدم التجميع",
+        detectionLabel: "ESP32 مكتشف",
+        steps: {
+          step1: {
+            title: "وضع لوحات ESP32",
+            description: "ضع كلا لوحتي التطوير ESP32",
+            requirement: "اكتشاف لوحتين ESP32"
+          },
+          step2: {
+            title: "توصيل مصدر الطاقة",
+            description: "وصل محول الطاقة 5 فولت لكلا اللوحتين",
+            requirement: "التحقق من توصيلات الطاقة"
+          },
+          step3: {
+            title: "توصيل كابلات البيانات",
+            description: "وصل كابلات USB لتوصيل البيانات",
+            requirement: "إنشاء اتصالات البيانات"
+          },
+          step4: {
+            title: "التحقق النهائي",
+            description: "اختبار النظام وفحص التكوين",
+            requirement: "جميع الأنظمة تعمل"
+          }
+        },
+        status: {
+          step1Complete: "الخطوة الأولى مكتملة! تم اكتشاف {count} لوحة ESP32",
+          anotherEsp32Needed: "ESP32 آخر مطلوب",
+          oneMoreRequired: "(واحد إضافي مطلوب)",
+          place2Boards: "ضع لوحتين ESP32 لإكمال الخطوة الأولى",
+          manualStep: "خطوة يدوية - اضغط \"التالي\" عند الانتهاء",
+          completionMessage: "🎉 إكمال التجميع"
+        }
       },
       detection: {
         local_server: "خادم محلي",

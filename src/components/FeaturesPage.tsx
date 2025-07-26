@@ -17,7 +17,44 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [detectionCount, setDetectionCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Assembly steps configuration
+  const assemblySteps = [
+    {
+      id: 1,
+      title: t('assembly.steps.step1.title'),
+      description: t('assembly.steps.step1.description'),
+      requirement: t('assembly.steps.step1.requirement'),
+      requiredCount: 2,
+      icon: "📱"
+    },
+    {
+      id: 2,
+      title: t('assembly.steps.step2.title'),
+      description: t('assembly.steps.step2.description'),
+      requirement: t('assembly.steps.step2.requirement'),
+      requiredCount: 2,
+      icon: "🔌"
+    },
+    {
+      id: 3,
+      title: t('assembly.steps.step3.title'),
+      description: t('assembly.steps.step3.description'),
+      requirement: t('assembly.steps.step3.requirement'),
+      requiredCount: 2,
+      icon: "🔗"
+    },
+    {
+      id: 4,
+      title: t('assembly.steps.step4.title'),
+      description: t('assembly.steps.step4.description'),
+      requirement: t('assembly.steps.step4.requirement'),
+      requiredCount: 2,
+      icon: "✅"
+    }
+  ];
 
   // Features configuration
   const features = [
@@ -137,61 +174,145 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
   };
 
+
+
+  // Smooth drawing function to reduce flicker
+  const drawDetections = (ctx: CanvasRenderingContext2D, detections: any[]) => {
+    detections.forEach((detection, index) => {
+      const { x, y, width, height, confidence } = detection;
+      
+      // Main bounding box - using app's green theme color
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, width, height);
+      
+      // Semi-transparent fill
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+      ctx.fillRect(x, y, width, height);
+      
+      // Corner markers for better visibility
+      const cornerSize = 15;
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      
+      // Top-left corner
+      ctx.beginPath();
+      ctx.moveTo(x, y + cornerSize);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x + cornerSize, y);
+      ctx.stroke();
+      
+      // Top-right corner
+      ctx.beginPath();
+      ctx.moveTo(x + width - cornerSize, y);
+      ctx.lineTo(x + width, y);
+      ctx.lineTo(x + width, y + cornerSize);
+      ctx.stroke();
+      
+      // Bottom-left corner
+      ctx.beginPath();
+      ctx.moveTo(x, y + height - cornerSize);
+      ctx.lineTo(x, y + height);
+      ctx.lineTo(x + cornerSize, y + height);
+      ctx.stroke();
+      
+      // Bottom-right corner
+      ctx.beginPath();
+      ctx.moveTo(x + width - cornerSize, y + height);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x + width, y + height - cornerSize);
+      ctx.stroke();
+      
+      // Label with app theme styling
+      const label = `ESP32 ${(confidence * 100).toFixed(0)}%`;
+      ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const labelMetrics = ctx.measureText(label);
+      const labelWidth = labelMetrics.width + 12;
+      const labelHeight = 24;
+      
+      const labelX = x;
+      const labelY = y > labelHeight ? y - labelHeight : y + height;
+      
+      // Label background - matching app's dark theme
+      ctx.fillStyle = 'rgba(26, 29, 41, 0.9)';
+      ctx.fillRect(labelX, labelY, labelWidth, labelHeight);
+      
+      // Label border
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(labelX, labelY, labelWidth, labelHeight);
+      
+      // Label text
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(label, labelX + 6, labelY + 16);
+      
+      // Detection number badge
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(x + width - 12, y + 12, 10, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.fillStyle = '#1a1d29';
+      ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText((index + 1).toString(), x + width - 12, y + 16);
+      ctx.textAlign = 'left';
+    });
+  };
+
   // ESP32 Detection Function for Assembly Verification
   const performESP32Detection = async () => {
-    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly') return;
+    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly') {
+      return;
+    }
 
     try {
       const canvas = canvasRef.current;
       const video = videoRef.current;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      
+      if (!ctx) {
+        console.error('❌ Could not get canvas context');
+        return;
+      }
 
-      if (video.readyState < 2) return;
+      if (video.readyState < 2) {
+        return;
+      }
 
+      // CRITICAL: Ensure canvas dimensions match video exactly
+      const videoRect = video.getBoundingClientRect();
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+      canvas.style.width = videoRect.width + 'px';
+      canvas.style.height = videoRect.height + 'px';
+
+      // Clear previous drawings
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Run ESP32 detection
       const analysis = await mlService.detectESP32(canvas, video);
+      
       setDetectionCount(analysis.detections.length);
 
-      // Draw simple tracking boxes
+      // Draw detection boxes immediately
       if (analysis.detections.length > 0) {
         ctx.save();
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
-        ctx.font = '14px Arial';
-        
-        analysis.detections.forEach((detection) => {
-          const { x, y, width, height, confidence } = detection;
-          
-          // Draw bounding box
-          ctx.strokeRect(x, y, width, height);
-          ctx.fillRect(x, y, width, height);
-          
-          // Draw label
-          ctx.fillStyle = '#00ff00';
-          ctx.fillText(
-            `ESP32 ${(confidence * 100).toFixed(0)}%`, 
-            x, 
-            y - 5
-          );
-        });
-        
+        drawDetections(ctx, analysis.detections);
         ctx.restore();
       }
 
     } catch (err) {
-      console.error('ESP32 detection failed:', err);
+      console.error('❌ ESP32 detection failed:', err);
       setDetectionCount(0);
     }
   };
 
   const startDetection = async () => {
-    if (isDetecting || !videoRef.current || activeFeature !== 'assembly') return;
+    if (isDetecting || !videoRef.current || activeFeature !== 'assembly') {
+      return;
+    }
 
     setIsLoading(true);
     setError('');
@@ -210,14 +331,16 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
       setIsDetecting(true);
       
-      // Start detection loop at 5 FPS for optimal performance
-      const detectionInterval = 200;
+      // Start detection loop at 4 FPS for optimal balance of performance and smoothness
+      const detectionInterval = 250;
       detectionIntervalRef.current = setInterval(performESP32Detection, detectionInterval);
       
+      // Run first detection immediately
       await performESP32Detection();
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('❌ Failed to start detection:', errorMessage);
       setError(`Failed to start detection: ${errorMessage}`);
       setIsDetecting(false);
     } finally {
@@ -276,7 +399,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
           <div className="video-container">
             <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
-            <canvas ref={canvasRef} className="detection-overlay" />
+            <canvas ref={canvasRef} className={`detection-overlay ${isDetecting ? 'active' : ''}`} />
           </div>
 
           <div className="controls">
@@ -299,10 +422,115 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             )}
           </div>
 
-          {/* Simple Detection Count Display */}
-          <div className="detection-status">
-            <div className="detection-count">
-              ESP32 Boards Detected: <span className={detectionCount > 0 ? 'detected' : 'none'}>{detectionCount}</span>
+          {/* ESP32 Detection Display */}
+          <div className="esp32-detection-display">
+                         <div className="detection-summary">
+               <span className="detection-count-badge">
+                 <span className="count-number">{detectionCount}</span>
+                 <span className="count-label">{t('assembly.detectionLabel')}</span>
+               </span>
+             </div>
+          </div>
+
+                     {/* Assembly Progress Steps */}
+           <div className="assembly-progress">
+             <h3 className="progress-title">{t('assembly.progressTitle')}</h3>
+            <div className="steps-container">
+              {assemblySteps.map((step, index) => {
+                const isCompleted = step.id < currentStep || (step.id === 1 && detectionCount >= step.requiredCount);
+                const isCurrent = step.id === currentStep;
+                const isStep1 = step.id === 1;
+                
+                return (
+                  <div key={step.id} className={`step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
+                    <div className="step-indicator">
+                      <span className="step-icon">{isCompleted ? '✅' : step.icon}</span>
+                      <span className="step-number">{step.id}</span>
+                    </div>
+                    
+                    <div className="step-content">
+                      <h4 className="step-title">{step.title}</h4>
+                      <p className="step-description">{step.description}</p>
+                      
+                                             {isStep1 && isCurrent && (
+                         <div className="step-status">
+                           {detectionCount >= step.requiredCount ? (
+                             <span className="status-success">
+                               ✅ {t('assembly.status.step1Complete', { count: detectionCount })}
+                             </span>
+                           ) : (
+                                                          <span className="status-warning">
+                                ⚠️ {detectionCount === 1 ? t('assembly.status.anotherEsp32Needed') : t('assembly.status.place2Boards')}
+                                {detectionCount === 1 && <span className="helper-text"> {t('assembly.status.oneMoreRequired')}</span>}
+                             </span>
+                           )}
+                         </div>
+                       )}
+                      
+                                             {!isStep1 && isCurrent && (
+                         <div className="step-status">
+                           <span className="status-pending">
+                             📋 {t('assembly.status.manualStep')}
+                           </span>
+                         </div>
+                       )}
+                    </div>
+                    
+                    {index < assemblySteps.length - 1 && (
+                      <div className={`step-connector ${isCompleted ? 'completed' : ''}`}></div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Progress Controls */}
+            <div className="progress-controls">
+                             {currentStep === 1 && detectionCount >= 2 && (
+                 <button 
+                   className="btn btn-success"
+                   onClick={() => setCurrentStep(2)}
+                 >
+                   {t('actions.continue')} →
+                 </button>
+               )}
+              
+                             {currentStep > 1 && currentStep < 4 && (
+                 <div className="manual-controls">
+                   <button 
+                     className="btn btn-secondary"
+                     onClick={() => setCurrentStep(currentStep - 1)}
+                   >
+                     ← {t('actions.previous')}
+                   </button>
+                   <button 
+                     className="btn btn-success"
+                     onClick={() => setCurrentStep(currentStep + 1)}
+                   >
+                     {t('actions.next')} →
+                   </button>
+                 </div>
+               )}
+              
+                             {currentStep === 4 && (
+                 <div className="completion-controls">
+                   <button 
+                     className="btn btn-secondary"
+                     onClick={() => setCurrentStep(3)}
+                   >
+                     ← {t('actions.previous')}
+                   </button>
+                   <button 
+                     className="btn btn-primary"
+                     onClick={() => {
+                       setCurrentStep(1);
+                       setDetectionCount(0);
+                     }}
+                   >
+                     {t('assembly.status.completionMessage')}
+                   </button>
+                 </div>
+               )}
             </div>
           </div>
 
@@ -330,7 +558,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           <div className="camera-section">
             <div className="video-container">
               <video ref={videoRef} autoPlay playsInline muted />
-              <canvas ref={canvasRef} className="detection-overlay" />
+              <canvas ref={canvasRef} className={`detection-overlay ${isDetecting ? 'active' : ''}`} />
             </div>
 
             <div className="controls">
