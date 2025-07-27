@@ -1,4 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
+// Note: MediaPipe Hands will be loaded dynamically when needed
 
 // ESP32 Detection Types
 export interface ESP32Detection {
@@ -37,12 +38,32 @@ export interface MotorWireAnalysis {
   status: 'fully_connected' | 'partially_connected' | 'not_connected' | 'unknown';
 }
 
+// Anti-Static Wrist Strap Detection Types
+export interface WristStrapDetection {
+  handedness: 'Left' | 'Right';
+  wristX: number;
+  wristY: number;
+  bluePixelPercentage: number;
+  confidence: number;
+  hasStrap: boolean;
+}
+
+export interface WristStrapAnalysis {
+  detections: WristStrapDetection[];
+  handsWithStraps: number;
+  totalHands: number;
+  isWearingStrap: boolean;
+  averageConfidence: number;
+  status: 'wearing_strap' | 'no_strap' | 'checking' | 'unknown';
+}
+
 // ML Service with TensorFlow.js for multiple models
 class MLService {
   public esp32Model: tf.GraphModel | null = null;
   public motorWireModel: tf.GraphModel | null = null;
+  public handsModel: any = null; // MediaPipe Hands model
   private isInitialized = false;
-  private currentActiveModel: 'esp32' | 'motor_wire' | null = null;
+  private currentActiveModel: 'esp32' | 'motor_wire' | 'hands' | null = null;
 
   constructor() {
     console.log('🔧 ESP32 ML Service initialized');
@@ -700,8 +721,170 @@ class MLService {
     return intersection / union;
   }
 
+  // Initialize Color-based Hands Detection for Anti-Static Strap Detection
+  async initializeHandsModel(): Promise<void> {
+    if (this.handsModel) return;
+
+    console.log('👋 Initializing color-based wrist strap detection...');
+    
+    try {
+      await this.initializeTensorFlow();
+
+      // Set up color-based detection (no external dependencies needed)
+      this.handsModel = {
+        ready: true,
+        type: 'color-based'
+      };
+
+      console.log('✅ Color-based wrist strap detection ready');
+      
+    } catch (error) {
+      console.error('❌ Wrist strap detection initialization failed:', error);
+      this.handsModel = null;
+      throw error;
+    }
+  }
+
+  // Anti-Static Wrist Strap Detection using Color Analysis
+  async detectWristStrap(canvas: HTMLCanvasElement, videoElement?: HTMLVideoElement): Promise<WristStrapAnalysis> {
+    try {
+      console.log('🔍 Starting Anti-Static Wrist Strap detection...');
+      
+      // Get source element
+      const sourceElement = videoElement && videoElement.readyState >= 2 ? videoElement : canvas;
+      
+      // Use advanced color-based detection
+      console.log('🎨 Using color-based wrist strap detection');
+      return await this.detectWristStrapByColor(canvas, sourceElement);
+
+    } catch (error) {
+      console.error('❌ Wrist strap detection failed:', error);
+      return {
+        detections: [],
+        handsWithStraps: 0,
+        totalHands: 0,
+        isWearingStrap: false,
+        averageConfidence: 0,
+        status: 'unknown'
+      };
+    }
+  }
+
+  // Color-based Anti-Static Strap Detection (Blue Color Detection)
+  private async detectWristStrapByColor(canvas: HTMLCanvasElement, sourceElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement): Promise<WristStrapAnalysis> {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get canvas context');
+
+    // Draw the source to canvas for analysis
+    ctx.drawImage(sourceElement, 0, 0, canvas.width, canvas.height);
+    
+    // Get image data for color analysis
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Define blue color range for anti-static wrist straps (HSV converted to RGB ranges)
+    const blueRanges = [
+      // Primary blue range
+      { rMin: 0, rMax: 100, gMin: 50, gMax: 150, bMin: 150, bMax: 255 },
+      // Navy blue range  
+      { rMin: 0, rMax: 80, gMin: 30, gMax: 120, bMin: 120, bMax: 200 },
+      // Electric blue range
+      { rMin: 0, rMax: 120, gMin: 80, gMax: 180, bMin: 180, bMax: 255 }
+    ];
+
+    // Analyze different regions of the image for blue pixels
+    const regions = this.getWristRegions(canvas.width, canvas.height);
+    const detections: WristStrapDetection[] = [];
+
+    for (let regionIndex = 0; regionIndex < regions.length; regionIndex++) {
+      const region = regions[regionIndex];
+      let bluePixelCount = 0;
+      let totalPixels = 0;
+
+      // Analyze pixels in this region
+      for (let y = region.y; y < region.y + region.height; y += 2) { // Skip pixels for performance
+        for (let x = region.x; x < region.x + region.width; x += 2) {
+          const pixelIndex = (y * canvas.width + x) * 4;
+          const r = data[pixelIndex];
+          const g = data[pixelIndex + 1];
+          const b = data[pixelIndex + 2];
+
+          totalPixels++;
+
+          // Check if pixel matches any blue range
+          for (const range of blueRanges) {
+            if (r >= range.rMin && r <= range.rMax &&
+                g >= range.gMin && g <= range.gMax &&
+                b >= range.bMin && b <= range.bMax) {
+              bluePixelCount++;
+              break;
+            }
+          }
+        }
+      }
+
+      const bluePercentage = totalPixels > 0 ? (bluePixelCount / totalPixels) * 100 : 0;
+      const hasStrap = bluePercentage > 15; // Threshold for blue color presence
+      const confidence = Math.min(bluePercentage / 30, 1); // Normalize to 0-1
+
+      if (bluePercentage > 5) { // Only include regions with some blue
+        detections.push({
+          handedness: regionIndex === 0 ? 'Left' : 'Right',
+          wristX: region.x + region.width / 2,
+          wristY: region.y + region.height / 2,
+          bluePixelPercentage: bluePercentage,
+          confidence: confidence,
+          hasStrap: hasStrap
+        });
+      }
+    }
+
+    // Calculate overall analysis
+    const handsWithStraps = detections.filter(d => d.hasStrap).length;
+    const totalHands = Math.max(detections.length, 1); // At least 1 to avoid division by zero
+    const isWearingStrap = handsWithStraps > 0;
+    const averageConfidence = detections.length > 0 
+      ? detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length 
+      : 0;
+
+    let status: 'wearing_strap' | 'no_strap' | 'checking' | 'unknown';
+    if (isWearingStrap && averageConfidence > 0.6) {
+      status = 'wearing_strap';
+    } else if (detections.length > 0 && !isWearingStrap) {
+      status = 'no_strap';
+    } else if (detections.length > 0) {
+      status = 'checking';
+    } else {
+      status = 'unknown';
+    }
+
+    console.log(`🔍 Wrist strap analysis: ${handsWithStraps}/${totalHands} hands with straps, avg confidence: ${averageConfidence.toFixed(2)}`);
+
+    return {
+      detections,
+      handsWithStraps,
+      totalHands: detections.length,
+      isWearingStrap,
+      averageConfidence,
+      status
+    };
+  }
+
+  // Get potential wrist regions for analysis
+  private getWristRegions(width: number, height: number) {
+    // Define regions where wrists are likely to appear
+    return [
+      // Left wrist region (bottom-left area)
+      { x: Math.floor(width * 0.1), y: Math.floor(height * 0.6), width: Math.floor(width * 0.3), height: Math.floor(height * 0.3) },
+      // Right wrist region (bottom-right area)  
+      { x: Math.floor(width * 0.6), y: Math.floor(height * 0.6), width: Math.floor(width * 0.3), height: Math.floor(height * 0.3) },
+      // Center-bottom region (for hands working in center)
+      { x: Math.floor(width * 0.3), y: Math.floor(height * 0.5), width: Math.floor(width * 0.4), height: Math.floor(height * 0.4) }
+    ];
+  }
+
   // Performance optimization: Switch between models
-  async switchToModel(modelType: 'esp32' | 'motor_wire'): Promise<void> {
+  async switchToModel(modelType: 'esp32' | 'motor_wire' | 'hands'): Promise<void> {
     if (this.currentActiveModel === modelType) return;
 
     console.log(`🔄 Switching to ${modelType} model for better performance...`);
@@ -715,6 +898,9 @@ class MLService {
       console.log('🗑️ Disposing Motor Wire model to free memory');
       this.motorWireModel.dispose();
       this.motorWireModel = null;
+    } else if (this.currentActiveModel === 'hands' && this.handsModel) {
+      console.log('🗑️ Disposing Hands model to free memory');
+      this.handsModel = null;
     }
 
     // Load new model
@@ -722,6 +908,10 @@ class MLService {
       await this.initializeESP32Model();
     } else if (modelType === 'motor_wire') {
       await this.initializeMotorWireModel();
+    } else if (modelType === 'hands') {
+      await this.initializeHandsModel().catch(() => {
+        console.log('📝 Hands model not available, will use color-based detection');
+      });
     }
 
     this.currentActiveModel = modelType;
@@ -738,18 +928,22 @@ class MLService {
       this.motorWireModel.dispose();
       this.motorWireModel = null;
     }
+    if (this.handsModel) {
+      this.handsModel = null;
+    }
     this.currentActiveModel = null;
     this.isInitialized = false;
   }
 
   // Status check
-  isReady(modelType?: 'esp32' | 'motor_wire'): boolean {
+  isReady(modelType?: 'esp32' | 'motor_wire' | 'hands'): boolean {
     if (!modelType) {
-      return this.isInitialized && (this.esp32Model !== null || this.motorWireModel !== null);
+      return this.isInitialized && (this.esp32Model !== null || this.motorWireModel !== null || this.handsModel !== null);
     }
     return this.isInitialized && (
       (modelType === 'esp32' && this.esp32Model !== null) ||
-      (modelType === 'motor_wire' && this.motorWireModel !== null)
+      (modelType === 'motor_wire' && this.motorWireModel !== null) ||
+      (modelType === 'hands') // Hands detection works with color analysis even without MediaPipe
     );
   }
 }

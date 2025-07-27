@@ -3739,6 +3739,26 @@
   font-size: 0.9rem;
 }
 
+/* Wrist Strap Detection Badges */
+.wrist-strap-status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wrist-strap-detected {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.wrist-strap-missing {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.strap-icon {
+  font-size: 1.2rem;
+  margin-right: 8px;
+}
+
 /* Assembly Progress */
 .assembly-progress {
   background: var(--card-bg);

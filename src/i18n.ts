@@ -57,6 +57,10 @@ const resources = {
           connected: "Connected",
           notConnected: "Not Connected"
         },
+        wristStrap: {
+          detected: "Anti-Static Strap Detected",
+          notDetected: "No Anti-Static Strap"
+        },
         steps: {
           step1: {
             title: "Place ESP32 Boards",
@@ -69,9 +73,9 @@ const resources = {
             requirement: "All motor wires connected"
           },
           step3: {
-            title: "Connect Data Cables", 
-            description: "Connect USB cables for data communication",
-            requirement: "Data connections established"
+            title: "Wear Anti-Static Strap", 
+            description: "Put on blue anti-static wrist strap for safety",
+            requirement: "Anti-static strap detected"
           },
           step4: {
             title: "Final Verification",
@@ -82,12 +86,16 @@ const resources = {
         status: {
           step1Complete: "Step 1 Complete! {count} ESP32 boards detected",
           step2Complete: "Step 2 Complete! {connected} motor wires connected",
+          step3Complete: "Step 3 Complete! Anti-static strap detected",
           anotherEsp32Needed: "Another ESP32 needed",
           oneMoreRequired: "(1 more required)",
           place2Boards: "Place 2 ESP32 boards to complete Step 1",
           partialConnection: "{connected} of {total} motor wires connected",
           noConnections: "No motor wire connections detected",
           detectingConnections: "Detecting motor wire connections...",
+          noWristStrap: "Please put on blue anti-static wrist strap",
+          checkingWristStrap: "Checking for anti-static strap...",
+          detectingWristStrap: "Detecting anti-static wrist strap...",
           manualStep: "Manual step - Click \"Next\" when complete",
           completionMessage: "🎉 Complete Assembly"
         }
@@ -240,6 +248,10 @@ const resources = {
           connected: "متصل",
           notConnected: "غير متصل"
         },
+        wristStrap: {
+          detected: "تم اكتشاف سوار مضاد للكهرباء الساكنة",
+          notDetected: "لا يوجد سوار مضاد للكهرباء الساكنة"
+        },
         steps: {
           step1: {
             title: "وضع لوحات ESP32",
@@ -252,9 +264,9 @@ const resources = {
             requirement: "توصيل جميع أسلاك المحرك"
           },
           step3: {
-            title: "توصيل كابلات البيانات",
-            description: "وصل كابلات USB لتوصيل البيانات",
-            requirement: "إنشاء اتصالات البيانات"
+            title: "ارتداء سوار مضاد للكهرباء الساكنة",
+            description: "ارتدِ السوار الأزرق المضاد للكهرباء الساكنة للأمان",
+            requirement: "اكتشاف السوار المضاد للكهرباء الساكنة"
           },
           step4: {
             title: "التحقق النهائي",
@@ -265,12 +277,16 @@ const resources = {
         status: {
           step1Complete: "الخطوة الأولى مكتملة! تم اكتشاف {count} لوحة ESP32",
           step2Complete: "الخطوة الثانية مكتملة! تم توصيل {connected} سلك محرك",
+          step3Complete: "الخطوة الثالثة مكتملة! تم اكتشاف السوار المضاد للكهرباء الساكنة",
           anotherEsp32Needed: "ESP32 آخر مطلوب",
           oneMoreRequired: "(واحد إضافي مطلوب)",
           place2Boards: "ضع لوحتين ESP32 لإكمال الخطوة الأولى",
           partialConnection: "تم توصيل {connected} من {total} أسلاك المحرك",
           noConnections: "لم يتم اكتشاف توصيلات أسلاك المحرك",
           detectingConnections: "جاري اكتشاف توصيلات أسلاك المحرك...",
+          noWristStrap: "يرجى ارتداء السوار الأزرق المضاد للكهرباء الساكنة",
+          checkingWristStrap: "جاري فحص السوار المضاد للكهرباء الساكنة...",
+          detectingWristStrap: "جاري اكتشاف السوار المضاد للكهرباء الساكنة...",
           manualStep: "خطوة يدوية - اضغط \"التالي\" عند الانتهاء",
           completionMessage: "🎉 إكمال التجميع"
         }

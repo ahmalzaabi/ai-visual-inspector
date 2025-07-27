@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mlService } from '../services/mlService';
-import type { MotorWireAnalysis } from '../services/mlService';
+import type { MotorWireAnalysis, WristStrapAnalysis } from '../services/mlService';
 import FeatureCard from './FeatureCard';
 
 interface FeaturesPageProps {
@@ -18,6 +18,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [detectionCount, setDetectionCount] = useState(0);
   const [motorWireAnalysis, setMotorWireAnalysis] = useState<MotorWireAnalysis | null>(null);
+  const [wristStrapAnalysis, setWristStrapAnalysis] = useState<WristStrapAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -178,6 +179,70 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
 
 
+  // Draw wrist strap detections
+  const drawWristStrapDetections = (ctx: CanvasRenderingContext2D, detections: any[]) => {
+    detections.forEach((detection) => {
+      const { wristX, wristY, bluePixelPercentage, hasStrap, handedness } = detection;
+      
+      // Create visual indicator for wrist area
+      const radius = 40;
+      const strokeColor = hasStrap ? '#22c55e' : '#fbbf24'; // Green if strap detected, yellow if checking
+      const fillColor = hasStrap ? 'rgba(34, 197, 94, 0.2)' : 'rgba(251, 191, 36, 0.2)';
+      
+      // Draw wrist detection circle
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(wristX, wristY, radius, 0, 2 * Math.PI);
+      ctx.stroke();
+      
+      // Fill circle
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      
+      // Draw wrist strap indicator
+      if (hasStrap) {
+        // Draw blue band representation
+        ctx.strokeStyle = '#3b82f6'; // Blue color
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(wristX, wristY, radius - 5, 0, Math.PI * 1.5); // 3/4 circle to represent strap
+        ctx.stroke();
+        
+        // Add checkmark
+        ctx.fillStyle = '#22c55e';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillText('✓', wristX - 8, wristY + 8);
+      }
+      
+      // Label with detection status
+      const label = hasStrap ? 
+        `${handedness} Wrist: Anti-Static Strap ✓` : 
+        `${handedness} Wrist: ${bluePixelPercentage.toFixed(0)}% Blue`;
+      
+      ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const labelMetrics = ctx.measureText(label);
+      const labelWidth = labelMetrics.width + 12;
+      const labelHeight = 20;
+      
+      const labelX = wristX - labelWidth / 2;
+      const labelY = wristY > labelHeight + radius ? wristY - radius - labelHeight : wristY + radius + labelHeight;
+      
+      // Label background
+      ctx.fillStyle = 'rgba(26, 29, 41, 0.9)';
+      ctx.fillRect(labelX, labelY, labelWidth, labelHeight);
+      
+      // Label border
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(labelX, labelY, labelWidth, labelHeight);
+      
+      // Label text
+      ctx.fillStyle = strokeColor;
+      ctx.fillText(label, labelX + 6, labelY + 14);
+    });
+  };
+
   // Draw motor wire detections
   const drawMotorWireDetections = (ctx: CanvasRenderingContext2D, detections: any[]) => {
     detections.forEach((detection) => {
@@ -316,6 +381,54 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     });
   };
 
+  // Wrist Strap Detection Function for Step 3
+  const performWristStrapDetection = async () => {
+    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly' || currentStep !== 3) {
+      return;
+    }
+
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('❌ Could not get canvas context');
+        return;
+      }
+
+      if (video.readyState < 2) {
+        return;
+      }
+
+      // CRITICAL: Ensure canvas dimensions match video exactly
+      const videoRect = video.getBoundingClientRect();
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.style.width = videoRect.width + 'px';
+      canvas.style.height = videoRect.height + 'px';
+
+      // Clear previous drawings
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Run Wrist Strap detection
+      const analysis = await mlService.detectWristStrap(canvas, video);
+      
+      setWristStrapAnalysis(analysis);
+
+      // Draw wrist strap detection indicators immediately
+      if (analysis.detections.length > 0) {
+        ctx.save();
+        drawWristStrapDetections(ctx, analysis.detections);
+        ctx.restore();
+      }
+
+    } catch (err) {
+      console.error('❌ Wrist strap detection failed:', err);
+      setWristStrapAnalysis(null);
+    }
+  };
+
   // Motor Wire Detection Function for Step 2
   const performMotorWireDetection = async () => {
     if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly' || currentStep !== 2) {
@@ -418,8 +531,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       await performESP32Detection();
     } else if (currentStep === 2) {
       await performMotorWireDetection();
+    } else if (currentStep === 3) {
+      await performWristStrapDetection();
     }
-    // Steps 3 and 4 are manual, no detection needed
+    // Step 4 is manual, no detection needed
   };
 
   const startDetection = async () => {
@@ -443,6 +558,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         await mlService.switchToModel('esp32');
       } else if (currentStep === 2) {
         await mlService.switchToModel('motor_wire');
+      } else if (currentStep === 3) {
+        await mlService.switchToModel('hands');
       }
 
       setIsDetecting(true);
@@ -561,7 +678,18 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                  </div>
                )}
                
-               {currentStep > 2 && (
+               {currentStep === 3 && wristStrapAnalysis && (
+                 <div className="wrist-strap-status">
+                   <span className={`detection-count-badge ${wristStrapAnalysis.isWearingStrap ? 'wrist-strap-detected' : 'wrist-strap-missing'}`}>
+                     <span className="strap-icon">{wristStrapAnalysis.isWearingStrap ? '✓' : '⚠️'}</span>
+                     <span className="count-label">
+                       {wristStrapAnalysis.isWearingStrap ? t('assembly.wristStrap.detected') : t('assembly.wristStrap.notDetected')}
+                     </span>
+                   </span>
+                 </div>
+               )}
+               
+               {currentStep === 4 && (
                  <span className="detection-count-badge manual-step">
                    <span className="count-label">{t('assembly.manualStepIndicator')}</span>
                  </span>
@@ -576,12 +704,15 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {assemblySteps.map((step, index) => {
                  const isStep1 = step.id === 1;
                  const isStep2 = step.id === 2;
+                 const isStep3 = step.id === 3;
                  const step1Complete = detectionCount >= 2;
                  const step2Complete = motorWireAnalysis?.isFullyConnected || false;
+                 const step3Complete = wristStrapAnalysis?.isWearingStrap || false;
                  
                  const isCompleted = 
                    (step.id === 1 && step1Complete) ||
                    (step.id === 2 && step2Complete) ||
+                   (step.id === 3 && step3Complete) ||
                    step.id < currentStep;
                    
                  const isCurrent = step.id === currentStep;
@@ -639,7 +770,31 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                          </div>
                        )}
                        
-                       {!isStep1 && !isStep2 && isCurrent && (
+                       {isStep3 && isCurrent && (
+                         <div className="step-status">
+                           {wristStrapAnalysis ? (
+                             wristStrapAnalysis.isWearingStrap ? (
+                               <span className="status-success">
+                                 ✅ {t('assembly.status.step3Complete')}
+                               </span>
+                             ) : wristStrapAnalysis.status === 'checking' ? (
+                               <span className="status-warning">
+                                 ⚠️ {t('assembly.status.checkingWristStrap')}
+                               </span>
+                             ) : (
+                               <span className="status-error">
+                                 ❌ {t('assembly.status.noWristStrap')}
+                               </span>
+                             )
+                           ) : (
+                             <span className="status-pending">
+                               🔍 {t('assembly.status.detectingWristStrap')}
+                             </span>
+                           )}
+                         </div>
+                       )}
+                       
+                       {!isStep1 && !isStep2 && !isStep3 && isCurrent && (
                          <div className="step-status">
                            <span className="status-pending">
                              📋 {t('assembly.status.manualStep')}
@@ -681,7 +836,27 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {currentStep === 2 && motorWireAnalysis?.isFullyConnected && (
                  <button 
                    className="btn btn-success"
-                   onClick={() => setCurrentStep(3)}
+                   onClick={async () => {
+                     setCurrentStep(3);
+                     // Switch to hands model for step 3
+                     await mlService.switchToModel('hands');
+                     if (isDetecting) {
+                       // Restart detection with new model
+                       if (detectionIntervalRef.current) {
+                         clearInterval(detectionIntervalRef.current);
+                       }
+                       detectionIntervalRef.current = setInterval(performDetection, 250);
+                     }
+                   }}
+                 >
+                   {t('actions.next')} →
+                 </button>
+               )}
+               
+               {currentStep === 3 && wristStrapAnalysis?.isWearingStrap && (
+                 <button 
+                   className="btn btn-success"
+                   onClick={() => setCurrentStep(4)}
                  >
                    {t('actions.next')} →
                  </button>
