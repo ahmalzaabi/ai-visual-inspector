@@ -666,13 +666,13 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           <section className="features-section">
             <div className="features-grid">
               {features.map((featureItem) => (
-                <FeatureCard
-                  key={featureItem.id}
-                  icon={featureItem.icon}
-                  feature={featureItem.feature}
-
-                  onClick={() => handleFeatureClick(featureItem.id)}
-                />
+                                  <FeatureCard
+                    key={featureItem.id}
+                    icon={featureItem.icon}
+                    feature={featureItem.feature}
+                    description={featureItem.description}
+                    onClick={() => handleFeatureClick(featureItem.id)}
+                  />
               ))}
             </div>
           </section>
@@ -702,7 +702,22 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               onClick={isPlaying ? stopCamera : startCamera}
               disabled={isLoading}
             >
-              {isLoading ? '⏳' : (isPlaying ? `📷 ${t('actions.stopCamera')}` : `📷 ${t('actions.startCamera')}`)}
+              {isLoading ? (
+                <>
+                  <span className="icon-loading"></span>
+                  Loading...
+                </>
+              ) : (isPlaying ? (
+                <>
+                  <span className="icon-stop"></span>
+                  {t('actions.stopCamera')}
+                </>
+              ) : (
+                <>
+                  <span className="icon-camera"></span>
+                  {t('actions.startCamera')}
+                </>
+              ))}
             </button>
             
             {isPlaying && (
@@ -711,7 +726,22 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 onClick={isDetecting ? stopDetection : startDetection}
                 disabled={isLoading}
               >
-                {isLoading ? '⏳ Loading...' : (isDetecting ? `⏹️ ${t('actions.stopDetection')}` : `🚀 ${t('actions.startDetection')}`)}
+                {isLoading ? (
+                  <>
+                    <span className="icon-loading"></span>
+                    Loading...
+                  </>
+                ) : (isDetecting ? (
+                  <>
+                    <span className="icon-stop"></span>
+                    {t('actions.stopDetection')}
+                  </>
+                ) : (
+                  <>
+                    <span className="icon-detect"></span>
+                    {t('actions.startDetection')}
+                  </>
+                ))}
               </button>
             )}
           </div>
@@ -742,7 +772,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {currentStep === 3 && wristStrapAnalysis && (
                  <div className="wrist-strap-status">
                    <span className={`detection-count-badge ${wristStrapAnalysis.isWearingStrap ? 'wrist-strap-detected' : 'wrist-strap-missing'}`}>
-                     <span className="strap-icon">{wristStrapAnalysis.isWearingStrap ? '✓' : '⚠️'}</span>
+                     <span className={`strap-icon ${wristStrapAnalysis.isWearingStrap ? 'icon-wrist' : 'icon-warning'}`}></span>
                      <span className="count-label">
                        {wristStrapAnalysis.isWearingStrap ? t('assembly.wristStrap.detected') : t('assembly.wristStrap.notDetected')}
                      </span>
@@ -753,7 +783,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {currentStep === 4 && arShowcaseAnalysis && (
                  <div className="ar-showcase-status">
                    <span className="detection-count-badge ar-esp32-info">
-                     <span className="ar-icon">📡</span>
+                                            <span className="ar-icon icon-ar"></span>
                      <span className="count-label">
                        {arShowcaseAnalysis.esp32Info.length} ESP32 AR Detected
                      </span>
@@ -801,7 +831,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 return (
                   <div key={step.id} className={`step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
                     <div className="step-indicator">
-                      <span className="step-icon">{isCompleted ? '✅' : step.icon}</span>
+                                               <span className={`step-icon ${isCompleted ? 'completed' : ''}`}>{isCompleted ? '✓' : step.id}</span>
                                              <span className={`step-icon step-icon-${step.id}`}></span>
                     </div>
                     
@@ -1065,7 +1095,22 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 onClick={isPlaying ? stopCamera : startCamera}
                 disabled={isLoading}
               >
-                {isLoading ? 'Loading...' : (isPlaying ? t('actions.stopCamera') : t('actions.startCamera'))}
+                {isLoading ? (
+                  <>
+                    <span className="icon-loading"></span>
+                    Loading...
+                  </>
+                ) : (isPlaying ? (
+                  <>
+                    <span className="icon-stop"></span>
+                    {t('actions.stopCamera')}
+                  </>
+                ) : (
+                  <>
+                    <span className="icon-camera"></span>
+                    {t('actions.startCamera')}
+                  </>
+                ))}
               </button>
             </div>
 

@@ -4293,3 +4293,436 @@ body {
 .step-icon-2::before { content: "2"; }
 .step-icon-3::before { content: "3"; }
 .step-icon-4::before { content: "4"; }
+
+/* High-Tech SVG Icon System */
+.tech-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 8px;
+}
+
+/* ESP32 Board Icon */
+.icon-esp32 {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #00ffff, #0099ff);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4h16v16H4z'/%3E%3Cpath d='M6 6h12v12H6z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Ccircle cx='9' cy='9' r='1' fill='currentColor'/%3E%3Ccircle cx='15' cy='9' r='1' fill='currentColor'/%3E%3Ccircle cx='9' cy='15' r='1' fill='currentColor'/%3E%3Ccircle cx='15' cy='15' r='1' fill='currentColor'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4h16v16H4z'/%3E%3Cpath d='M6 6h12v12H6z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Ccircle cx='9' cy='9' r='1' fill='currentColor'/%3E%3Ccircle cx='15' cy='9' r='1' fill='currentColor'/%3E%3Ccircle cx='9' cy='15' r='1' fill='currentColor'/%3E%3Ccircle cx='15' cy='15' r='1' fill='currentColor'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Motor/Wire Icon */
+.icon-motor {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #00ff88, #00ffff);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L2 7v10l10 5 10-5V7l-10-5z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M12 7v10M7 9.5l10 5M7 14.5l10-5'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L2 7v10l10 5 10-5V7l-10-5z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M12 7v10M7 9.5l10 5M7 14.5l10-5'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Shield/Safety Icon */
+.icon-wrist {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #0099ff, #6366f1);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L4 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-8-4z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M9 12l2 2 4-4'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L4 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-8-4z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M9 12l2 2 4-4'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* AR/Holographic Icon */
+.icon-ar {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #ff6b6b, #00ffff);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l9 4.9V17l-9 5-9-5V6.9L12 2z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M12 7v10M8 10l8 4M8 14l8-4'/%3E%3Ccircle cx='12' cy='12' r='2' fill='currentColor'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l9 4.9V17l-9 5-9-5V6.9L12 2z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M12 7v10M8 10l8 4M8 14l8-4'/%3E%3Ccircle cx='12' cy='12' r='2' fill='currentColor'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Camera Icon */
+.icon-camera {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #00ffff, #0099ff);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Ccircle cx='12' cy='13' r='4' fill='none' stroke='currentColor' stroke-width='2'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Ccircle cx='12' cy='13' r='4' fill='none' stroke='currentColor' stroke-width='2'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Stop Icon */
+.icon-stop {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #ff6b6b, #ff4757);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='6' width='12' height='12' rx='2' fill='currentColor'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='6' width='12' height='12' rx='2' fill='currentColor'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Detection/Search Icon */
+.icon-detect {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #00ff88, #00ffff);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Loading Icon */
+.icon-loading {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #ffaa00, #ff6b6b);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' stroke='currentColor' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' stroke='currentColor' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* High-Tech Button System */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 153, 255, 0.1));
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 255, 255, 0.3);
+  border-color: #00ffff;
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Button Variants */
+.btn-primary {
+  background: linear-gradient(135deg, #00ffff, #0099ff);
+  border-color: #00ffff;
+  color: #0a0a0a;
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  border-color: #00ff88;
+  color: #0a0a0a;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ff6b6b, #ff4757);
+  border-color: #ff6b6b;
+  color: #ffffff;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #ffaa00, #ff8800);
+  border-color: #ffaa00;
+  color: #0a0a0a;
+}
+
+/* High-Tech Detection Displays */
+.detection-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(26, 26, 46, 0.9);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  font-weight: 600;
+  font-size: 14px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.detection-count-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  animation: scan 2s ease-in-out infinite;
+}
+
+@keyframes scan {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.count-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ffff, #0099ff);
+  color: #0a0a0a;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.count-label {
+  color: #b0b0b0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Specialized Detection Badges */
+.motor-wire-connected {
+  border-color: rgba(0, 255, 136, 0.5);
+}
+
+.motor-wire-connected::before {
+  background: linear-gradient(90deg, transparent, #00ff88, transparent);
+}
+
+.motor-wire-disconnected {
+  border-color: rgba(255, 170, 0, 0.5);
+}
+
+.motor-wire-disconnected::before {
+  background: linear-gradient(90deg, transparent, #ffaa00, transparent);
+}
+
+.wrist-strap-detected {
+  border-color: rgba(0, 255, 136, 0.5);
+}
+
+.wrist-strap-detected::before {
+  background: linear-gradient(90deg, transparent, #00ff88, transparent);
+}
+
+.wrist-strap-missing {
+  border-color: rgba(255, 107, 107, 0.5);
+}
+
+.wrist-strap-missing::before {
+  background: linear-gradient(90deg, transparent, #ff6b6b, transparent);
+}
+
+.ar-esp32-info {
+  border-color: rgba(0, 255, 255, 0.5);
+}
+
+.ar-hologram {
+  border-color: rgba(255, 107, 107, 0.5);
+}
+
+.ar-datastream {
+  border-color: rgba(0, 255, 136, 0.5);
+}
+
+/* Step Indicators Enhanced */
+.step-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ffff, #0099ff);
+  color: #0a0a0a;
+  font-weight: 700;
+  margin-right: 12px;
+  font-size: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.step-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: linear-gradient(45deg, #00ffff, #0099ff, #00ffff) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.step.completed .step-icon {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+}
+
+.step.current .step-icon {
+  background: linear-gradient(135deg, #00ffff, #0099ff);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+/* Assembly Control Panels */
+.controls {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(26, 26, 46, 0.8);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.esp32-detection-display {
+  padding: 20px;
+  background: rgba(26, 26, 46, 0.8);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  margin-top: 16px;
+}
+
+.detection-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.motor-wire-status,
+.wrist-strap-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Status Indicators */
+.status-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #00ff88;
+  font-weight: 600;
+}
+
+.status-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffaa00;
+  font-weight: 600;
+}
+
+.status-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+/* Assembly Progress Enhanced */
+.assembly-progress .step {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(26, 26, 46, 0.6);
+  transition: all 0.3s ease;
+}
+
+.assembly-progress .step.current {
+  border-color: rgba(0, 255, 255, 0.5);
+  background: rgba(0, 255, 255, 0.05);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+}
+
+.assembly-progress .step.completed {
+  border-color: rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+/* Warning Icon */
+.icon-warning {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(45deg, #ffaa00, #ff8800);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Step Icon Improvements */
+.step-icon.completed {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  position: relative;
+}
+
+.step-icon.completed::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: #0a0a0a;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 12l2 2 4-4' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 12l2 2 4-4' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Override default step icon numbers */
+.step-icon-1::before,
+.step-icon-2::before,
+.step-icon-3::before,
+.step-icon-4::before {
+  content: attr(data-step);
+}

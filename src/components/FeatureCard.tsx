@@ -4,11 +4,12 @@ import './FeatureCard.css';
 interface FeatureCardProps {
   icon: React.ReactNode;
   feature: string;
+  description?: string;
   isActive?: boolean;
   onClick: () => void;
 }
 
-const FeatureCard = ({ icon, feature, isActive = false, onClick }: FeatureCardProps) => {
+const FeatureCard = ({ icon, feature, description, isActive = false, onClick }: FeatureCardProps) => {
   const { t } = useTranslation();
 
   return (
@@ -21,6 +22,7 @@ const FeatureCard = ({ icon, feature, isActive = false, onClick }: FeatureCardPr
       </div>
       <div className="feature-content">
         <h3 className="feature-title">{feature}</h3>
+        {description && <p className="feature-description">{description}</p>}
         <div className="feature-action">
           <span className="action-text">{t('actions.start')}</span>
           <span className="action-arrow">→</span>
