@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mlService } from '../services/mlService';
+import type { MotorWireAnalysis } from '../services/mlService';
 import FeatureCard from './FeatureCard';
 
 interface FeaturesPageProps {
@@ -16,6 +17,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detectionCount, setDetectionCount] = useState(0);
+  const [motorWireAnalysis, setMotorWireAnalysis] = useState<MotorWireAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -176,7 +178,60 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
 
 
-  // Smooth drawing function to reduce flicker
+  // Draw motor wire detections
+  const drawMotorWireDetections = (ctx: CanvasRenderingContext2D, detections: any[]) => {
+    detections.forEach((detection) => {
+      const { x, y, width, height, confidence, class: className } = detection;
+      
+      // Color based on connection status
+      const isConnected = className === 'connected';
+      const strokeColor = isConnected ? '#22c55e' : '#ef4444'; // Green for connected, Red for not connected
+      const fillColor = isConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+      
+      // Main bounding box
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, width, height);
+      
+      // Semi-transparent fill
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(x, y, width, height);
+      
+      // Connection status icon
+      const iconSize = 20;
+      const iconX = x + width - iconSize - 5;
+      const iconY = y + 5;
+      
+      ctx.fillStyle = strokeColor;
+      ctx.font = 'bold 16px Arial';
+      ctx.fillText(isConnected ? '🔗' : '❌', iconX, iconY + iconSize);
+      
+      // Label with connection status
+      const label = `${isConnected ? 'Connected' : 'Not Connected'} ${(confidence * 100).toFixed(0)}%`;
+      ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const labelMetrics = ctx.measureText(label);
+      const labelWidth = labelMetrics.width + 12;
+      const labelHeight = 20;
+      
+      const labelX = x;
+      const labelY = y > labelHeight ? y - labelHeight : y + height;
+      
+      // Label background
+      ctx.fillStyle = 'rgba(26, 29, 41, 0.9)';
+      ctx.fillRect(labelX, labelY, labelWidth, labelHeight);
+      
+      // Label border
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(labelX, labelY, labelWidth, labelHeight);
+      
+      // Label text
+      ctx.fillStyle = strokeColor;
+      ctx.fillText(label, labelX + 6, labelY + 14);
+    });
+  };
+
+  // Smooth drawing function to reduce flicker for ESP32
   const drawDetections = (ctx: CanvasRenderingContext2D, detections: any[]) => {
     detections.forEach((detection, index) => {
       const { x, y, width, height, confidence } = detection;
@@ -261,9 +316,57 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     });
   };
 
-  // ESP32 Detection Function for Assembly Verification
+  // Motor Wire Detection Function for Step 2
+  const performMotorWireDetection = async () => {
+    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly' || currentStep !== 2) {
+      return;
+    }
+
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('❌ Could not get canvas context');
+        return;
+      }
+
+      if (video.readyState < 2) {
+        return;
+      }
+
+      // CRITICAL: Ensure canvas dimensions match video exactly
+      const videoRect = video.getBoundingClientRect();
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.style.width = videoRect.width + 'px';
+      canvas.style.height = videoRect.height + 'px';
+
+      // Clear previous drawings
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Run Motor Wire detection
+      const analysis = await mlService.detectMotorWires(canvas, video);
+      
+      setMotorWireAnalysis(analysis);
+
+      // Draw motor wire detection boxes immediately
+      if (analysis.detections.length > 0) {
+        ctx.save();
+        drawMotorWireDetections(ctx, analysis.detections);
+        ctx.restore();
+      }
+
+    } catch (err) {
+      console.error('❌ Motor wire detection failed:', err);
+      setMotorWireAnalysis(null);
+    }
+  };
+
+  // ESP32 Detection Function for Step 1
   const performESP32Detection = async () => {
-    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly') {
+    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly' || currentStep !== 1) {
       return;
     }
 
@@ -309,6 +412,16 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
   };
 
+  // Combined detection function that calls appropriate detector based on current step
+  const performDetection = async () => {
+    if (currentStep === 1) {
+      await performESP32Detection();
+    } else if (currentStep === 2) {
+      await performMotorWireDetection();
+    }
+    // Steps 3 and 4 are manual, no detection needed
+  };
+
   const startDetection = async () => {
     if (isDetecting || !videoRef.current || activeFeature !== 'assembly') {
       return;
@@ -325,18 +438,21 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         }
       }
 
-      if (!mlService.isReady()) {
-        await mlService.initializeESP32Model();
+      // Initialize appropriate model based on current step and switch for performance
+      if (currentStep === 1) {
+        await mlService.switchToModel('esp32');
+      } else if (currentStep === 2) {
+        await mlService.switchToModel('motor_wire');
       }
 
       setIsDetecting(true);
       
       // Start detection loop at 4 FPS for optimal balance of performance and smoothness
       const detectionInterval = 250;
-      detectionIntervalRef.current = setInterval(performESP32Detection, detectionInterval);
+      detectionIntervalRef.current = setInterval(performDetection, detectionInterval);
       
       // Run first detection immediately
-      await performESP32Detection();
+      await performDetection();
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -425,21 +541,50 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
           {/* ESP32 Detection Display */}
           <div className="esp32-detection-display">
                          <div className="detection-summary">
-               <span className="detection-count-badge">
-                 <span className="count-number">{detectionCount}</span>
-                 <span className="count-label">{t('assembly.detectionLabel')}</span>
-               </span>
+               {currentStep === 1 && (
+                 <span className="detection-count-badge">
+                   <span className="count-number">{detectionCount}</span>
+                   <span className="count-label">{t('assembly.detectionLabel')}</span>
+                 </span>
+               )}
+               
+               {currentStep === 2 && motorWireAnalysis && (
+                 <div className="motor-wire-status">
+                   <span className="detection-count-badge motor-wire-connected">
+                     <span className="count-number">{motorWireAnalysis.connectedCount}</span>
+                     <span className="count-label">{t('assembly.motorWire.connected')}</span>
+                   </span>
+                   <span className="detection-count-badge motor-wire-disconnected">
+                     <span className="count-number">{motorWireAnalysis.notConnectedCount}</span>
+                     <span className="count-label">{t('assembly.motorWire.notConnected')}</span>
+                   </span>
+                 </div>
+               )}
+               
+               {currentStep > 2 && (
+                 <span className="detection-count-badge manual-step">
+                   <span className="count-label">{t('assembly.manualStepIndicator')}</span>
+                 </span>
+               )}
              </div>
           </div>
 
                      {/* Assembly Progress Steps */}
            <div className="assembly-progress">
              <h3 className="progress-title">{t('assembly.progressTitle')}</h3>
-            <div className="steps-container">
-              {assemblySteps.map((step, index) => {
-                const isCompleted = step.id < currentStep || (step.id === 1 && detectionCount >= step.requiredCount);
-                const isCurrent = step.id === currentStep;
-                const isStep1 = step.id === 1;
+                         <div className="steps-container">
+               {assemblySteps.map((step, index) => {
+                 const isStep1 = step.id === 1;
+                 const isStep2 = step.id === 2;
+                 const step1Complete = detectionCount >= 2;
+                 const step2Complete = motorWireAnalysis?.isFullyConnected || false;
+                 
+                 const isCompleted = 
+                   (step.id === 1 && step1Complete) ||
+                   (step.id === 2 && step2Complete) ||
+                   step.id < currentStep;
+                   
+                 const isCurrent = step.id === currentStep;
                 
                 return (
                   <div key={step.id} className={`step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
@@ -452,22 +597,49 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                       <h4 className="step-title">{step.title}</h4>
                       <p className="step-description">{step.description}</p>
                       
-                                             {isStep1 && isCurrent && (
+                                                                    {isStep1 && isCurrent && (
                          <div className="step-status">
                            {detectionCount >= step.requiredCount ? (
                              <span className="status-success">
                                ✅ {t('assembly.status.step1Complete', { count: detectionCount })}
                              </span>
                            ) : (
-                                                          <span className="status-warning">
+                             <span className="status-warning">
                                 ⚠️ {detectionCount === 1 ? t('assembly.status.anotherEsp32Needed') : t('assembly.status.place2Boards')}
                                 {detectionCount === 1 && <span className="helper-text"> {t('assembly.status.oneMoreRequired')}</span>}
                              </span>
                            )}
                          </div>
                        )}
-                      
-                                             {!isStep1 && isCurrent && (
+                       
+                       {isStep2 && isCurrent && (
+                         <div className="step-status">
+                           {motorWireAnalysis ? (
+                             motorWireAnalysis.isFullyConnected ? (
+                               <span className="status-success">
+                                 ✅ {t('assembly.status.step2Complete', { connected: motorWireAnalysis.connectedCount })}
+                               </span>
+                             ) : motorWireAnalysis.totalConnections > 0 ? (
+                               <span className="status-warning">
+                                 ⚠️ {t('assembly.status.partialConnection', { 
+                                   connected: motorWireAnalysis.connectedCount, 
+                                   total: motorWireAnalysis.totalConnections 
+                                 })}
+                               </span>
+                             ) : (
+                               <span className="status-error">
+                                 ❌ {t('assembly.status.noConnections')}
+                               </span>
+                             )
+                           ) : (
+                             <span className="status-pending">
+                               🔍 {t('assembly.status.detectingConnections')}
+                             </span>
+                           )}
+                         </div>
+                       )}
+                       
+                       {!isStep1 && !isStep2 && isCurrent && (
                          <div className="step-status">
                            <span className="status-pending">
                              📋 {t('assembly.status.manualStep')}
@@ -489,9 +661,29 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                              {currentStep === 1 && detectionCount >= 2 && (
                  <button 
                    className="btn btn-success"
-                   onClick={() => setCurrentStep(2)}
+                   onClick={async () => {
+                     setCurrentStep(2);
+                     // Switch to motor wire model for step 2
+                     await mlService.switchToModel('motor_wire');
+                     if (isDetecting) {
+                       // Restart detection with new model
+                       if (detectionIntervalRef.current) {
+                         clearInterval(detectionIntervalRef.current);
+                       }
+                       detectionIntervalRef.current = setInterval(performDetection, 250);
+                     }
+                   }}
                  >
                    {t('actions.continue')} →
+                 </button>
+               )}
+               
+               {currentStep === 2 && motorWireAnalysis?.isFullyConnected && (
+                 <button 
+                   className="btn btn-success"
+                   onClick={() => setCurrentStep(3)}
+                 >
+                   {t('actions.next')} →
                  </button>
                )}
               

@@ -52,6 +52,11 @@ const resources = {
       assembly: {
         progressTitle: "Assembly Progress",
         detectionLabel: "ESP32 detected",
+        manualStepIndicator: "Manual Step",
+        motorWire: {
+          connected: "Connected",
+          notConnected: "Not Connected"
+        },
         steps: {
           step1: {
             title: "Place ESP32 Boards",
@@ -59,9 +64,9 @@ const resources = {
             requirement: "2 ESP32 boards detected"
           },
           step2: {
-            title: "Connect Power Supply",
-            description: "Connect 5V power adapter to both boards",
-            requirement: "Power connections verified"
+            title: "Connect Motor Wires",
+            description: "Connect motor wires to ESP32 boards",
+            requirement: "All motor wires connected"
           },
           step3: {
             title: "Connect Data Cables", 
@@ -76,9 +81,13 @@ const resources = {
         },
         status: {
           step1Complete: "Step 1 Complete! {count} ESP32 boards detected",
+          step2Complete: "Step 2 Complete! {connected} motor wires connected",
           anotherEsp32Needed: "Another ESP32 needed",
           oneMoreRequired: "(1 more required)",
           place2Boards: "Place 2 ESP32 boards to complete Step 1",
+          partialConnection: "{connected} of {total} motor wires connected",
+          noConnections: "No motor wire connections detected",
+          detectingConnections: "Detecting motor wire connections...",
           manualStep: "Manual step - Click \"Next\" when complete",
           completionMessage: "🎉 Complete Assembly"
         }
@@ -226,6 +235,11 @@ const resources = {
       assembly: {
         progressTitle: "تقدم التجميع",
         detectionLabel: "ESP32 مكتشف",
+        manualStepIndicator: "خطوة يدوية",
+        motorWire: {
+          connected: "متصل",
+          notConnected: "غير متصل"
+        },
         steps: {
           step1: {
             title: "وضع لوحات ESP32",
@@ -233,9 +247,9 @@ const resources = {
             requirement: "اكتشاف لوحتين ESP32"
           },
           step2: {
-            title: "توصيل مصدر الطاقة",
-            description: "وصل محول الطاقة 5 فولت لكلا اللوحتين",
-            requirement: "التحقق من توصيلات الطاقة"
+            title: "توصيل أسلاك المحرك",
+            description: "وصل أسلاك المحرك إلى لوحات ESP32",
+            requirement: "توصيل جميع أسلاك المحرك"
           },
           step3: {
             title: "توصيل كابلات البيانات",
@@ -250,9 +264,13 @@ const resources = {
         },
         status: {
           step1Complete: "الخطوة الأولى مكتملة! تم اكتشاف {count} لوحة ESP32",
+          step2Complete: "الخطوة الثانية مكتملة! تم توصيل {connected} سلك محرك",
           anotherEsp32Needed: "ESP32 آخر مطلوب",
           oneMoreRequired: "(واحد إضافي مطلوب)",
           place2Boards: "ضع لوحتين ESP32 لإكمال الخطوة الأولى",
+          partialConnection: "تم توصيل {connected} من {total} أسلاك المحرك",
+          noConnections: "لم يتم اكتشاف توصيلات أسلاك المحرك",
+          detectingConnections: "جاري اكتشاف توصيلات أسلاك المحرك...",
           manualStep: "خطوة يدوية - اضغط \"التالي\" عند الانتهاء",
           completionMessage: "🎉 إكمال التجميع"
         }
