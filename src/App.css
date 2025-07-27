@@ -4148,3 +4148,148 @@
     flex-direction: column;
   }
 }
+
+/* PWA Safe Area Support for iPhone Island/Notch */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.app-header {
+  padding-top: max(20px, env(safe-area-inset-top));
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+}
+
+/* AI Tech Design System */
+:root {
+  --ai-primary: #00ffff;
+  --ai-secondary: #0099ff;
+  --ai-accent: #ff6b6b;
+  --ai-success: #00ff88;
+  --ai-warning: #ffaa00;
+  --ai-dark: #0a0a0a;
+  --ai-dark-secondary: #1a1a2e;
+  --ai-dark-tertiary: #16213e;
+  --ai-text: #ffffff;
+  --ai-text-secondary: #b0b0b0;
+  --ai-glow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+body {
+  background: linear-gradient(135deg, var(--ai-dark) 0%, var(--ai-dark-secondary) 50%, var(--ai-dark-tertiary) 100%);
+  color: var(--ai-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Main Page Redesign */
+.main-content {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.main-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--ai-primary) 0%, var(--ai-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 60px 0;
+  text-shadow: var(--ai-glow);
+  letter-spacing: -0.02em;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: rgba(26, 26, 46, 0.8);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 30px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ai-primary), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.feature-card:hover::before {
+  opacity: 1;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--ai-primary);
+  box-shadow: var(--ai-glow);
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  color: var(--ai-primary);
+}
+
+.feature-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: var(--ai-text);
+}
+
+/* Icon System */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 8px;
+}
+
+.icon-esp32::before { content: "🔧"; }
+.icon-motor::before { content: "⚡"; }
+.icon-wrist::before { content: "🛡️"; }
+.icon-ar::before { content: "🔮"; }
+.icon-camera::before { content: "📹"; }
+.icon-stop::before { content: "⏹️"; }
+.icon-detect::before { content: "🔍"; }
+
+/* Assembly Steps Icons */
+.step-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ai-primary);
+  color: var(--ai-dark);
+  font-weight: bold;
+  margin-right: 12px;
+  font-size: 12px;
+}
+
+.step-icon-1::before { content: "1"; }
+.step-icon-2::before { content: "2"; }
+.step-icon-3::before { content: "3"; }
+.step-icon-4::before { content: "4"; }

@@ -755,7 +755,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                    <span className="detection-count-badge ar-esp32-info">
                      <span className="ar-icon">📡</span>
                      <span className="count-label">
-                       {t('assembly.arShowcase.esp32Detected', { count: arShowcaseAnalysis.esp32Info.length })}
+                       {arShowcaseAnalysis.esp32Info.length} ESP32 AR Detected
                      </span>
                    </span>
                    {arShowcaseAnalysis.showcaseEffects.hologram && (
@@ -880,18 +880,16 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                            {arShowcaseAnalysis ? (
                              arShowcaseAnalysis.isActive ? (
                                <span className="status-success">
-                                 🚀 {t('assembly.status.arShowcaseActive', { 
-                                   count: arShowcaseAnalysis.esp32Info.length
-                                 })}
+                                 <span className="icon icon-ar"></span> AR Showcase Active! {arShowcaseAnalysis.esp32Info.length} ESP32 Detected
                                </span>
                              ) : (
                                <span className="status-pending">
-                                 🔍 {t('assembly.status.scanningESP32')}
+                                 <span className="icon icon-detect"></span> {t('assembly.status.scanningESP32')}
                                </span>
                              )
                            ) : (
                              <span className="status-pending">
-                               🚀 {t('assembly.status.loadingARShowcase')}
+                               <span className="icon icon-ar"></span> {t('assembly.status.loadingARShowcase')}
                              </span>
                            )}
                          </div>
@@ -948,68 +946,52 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                  </button>
                )}
                
-               {currentStep === 3 && wristStrapAnalysis?.isWearingStrap && (
-                 <button 
-                   className="btn btn-success"
-                   onClick={async () => {
-                     setCurrentStep(4);
-                     // Initialize AR showcase for step 4
-                     if (!arInitialized) {
-                       setIsLoading(true);
-                       try {
-                         await arService.initialize();
-                         setArInitialized(true);
-                       } catch (error) {
-                         console.error('AR initialization failed:', error);
-                       } finally {
-                         setIsLoading(false);
-                       }
-                     }
-                   }}
-                 >
-                   🚀 {t('assembly.arShowcase.startShowcase')} →
-                 </button>
-               )}
-               
-               {currentStep === 4 && arShowcaseAnalysis && (
-                 <div className="ar-showcase-controls">
-                   <button 
-                     className={`btn ${arShowcaseAnalysis.isActive ? 'btn-success' : 'btn-primary'}`}
-                     onClick={() => {
-                       if (arShowcaseAnalysis.isActive) {
-                         // Set language for bilingual report
-                         arService.setLanguage(t('assembly.steps.step1.title') === 'ESP32 Board Detection' ? 'en' : 'ar');
-                         // Generate and display ESP32 AR report
-                         const report = arService.generateESP32Report(arShowcaseAnalysis.esp32Info);
-                         alert(report);
-                       }
-                     }}
-                     disabled={!arShowcaseAnalysis.isActive}
-                   >
-                     {arShowcaseAnalysis.isActive ? (
-                       <>📊 {t('assembly.arShowcase.generateReport')}</>
-                     ) : (
-                       <>⏳ {t('assembly.arShowcase.waitingForDetection')}</>
-                     )}
-                   </button>
-                   
-                   {arShowcaseAnalysis.isActive && (
-                     <button 
-                       className="btn btn-gradient"
-                       onClick={() => {
-                         // Reset for new demonstration
-                         setCurrentStep(1);
-                         setArShowcaseAnalysis(null);
-                         setDetectionCount(0);
-                         setMotorWireAnalysis(null);
-                         setWristStrapAnalysis(null);
-                       }}
-                     >
-                       🔄 {t('assembly.arShowcase.newDemonstration')}
-                     </button>
-                   )}
-                 </div>
-               )}
+                                      {currentStep === 3 && wristStrapAnalysis?.isWearingStrap && (
+                         <button 
+                           className="btn btn-success"
+                           onClick={async () => {
+                             setCurrentStep(4);
+                             // Initialize AR showcase for step 4
+                             if (!arInitialized) {
+                               setIsLoading(true);
+                               try {
+                                 await arService.initialize();
+                                 setArInitialized(true);
+                               } catch (error) {
+                                 console.error('AR initialization failed:', error);
+                               } finally {
+                                 setIsLoading(false);
+                               }
+                             }
+                           }}
+                         >
+                           <span className="icon icon-ar"></span> {t('assembly.arShowcase.startShowcase')} →
+                         </button>
+                       )}
+                       
+                       {currentStep === 4 && arShowcaseAnalysis && (
+                         <div className="ar-showcase-controls">
+                           <button 
+                             className={`btn ${arShowcaseAnalysis.isActive ? 'btn-success' : 'btn-primary'}`}
+                             onClick={() => {
+                               if (arShowcaseAnalysis.isActive) {
+                                 // Set language for bilingual report
+                                 arService.setLanguage(t('assembly.steps.step1.title') === 'ESP32 Board Detection' ? 'en' : 'ar');
+                                 // Generate and display ESP32 AR report
+                                 const report = arService.generateESP32Report(arShowcaseAnalysis.esp32Info);
+                                 alert(report);
+                               }
+                             }}
+                             disabled={!arShowcaseAnalysis.isActive}
+                           >
+                             {arShowcaseAnalysis.isActive ? (
+                               <><span className="icon">📊</span> {t('assembly.arShowcase.generateReport')}</>
+                             ) : (
+                               <><span className="icon">⏳</span> {t('assembly.arShowcase.waitingForDetection')}</>
+                             )}
+                           </button>
+                         </div>
+                       )}
               
                              {currentStep > 1 && currentStep < 4 && (
                  <div className="manual-controls">

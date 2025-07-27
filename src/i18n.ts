@@ -88,7 +88,7 @@ const resources = {
           },
           step4: {
             title: "AR Technology Showcase",
-            description: "Advanced AR visualization and certification",
+            description: "",
             requirement: "AR demonstration complete"
           }
         },
@@ -292,7 +292,7 @@ const resources = {
           },
           step4: {
             title: "عرض تقنية الواقع المعزز",
-            description: "تصور متقدم بالواقع المعزز وإصدار الشهادة",
+            description: "",
             requirement: "اكتمال عرض الواقع المعزز"
           }
         },
