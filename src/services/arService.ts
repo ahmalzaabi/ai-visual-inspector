@@ -1,7 +1,6 @@
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// Lightweight AR without Three.js - using Canvas 2D for AR effects
 
-// AR Detection and Overlay Types
+// Lightweight AR Detection and Overlay Types
 export interface ARDetection {
   x: number;
   y: number;
@@ -13,9 +12,10 @@ export interface ARDetection {
 }
 
 export interface AROverlay {
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
-  scale: THREE.Vector3;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   visible: boolean;
   animation?: string;
 }
@@ -41,48 +41,18 @@ export interface ARShowcaseAnalysis {
   };
 }
 
-// Advanced AR Service for Assembly Technology Showcase
+// Lightweight AR Service using Canvas 2D
 class ARService {
-  private scene: THREE.Scene | null = null;
-  private camera: THREE.PerspectiveCamera | null = null;
-  private renderer: THREE.WebGLRenderer | null = null;
-  private esp32Model: THREE.Group | null = null;
-  private loader: GLTFLoader = new GLTFLoader();
-  private animationMixer: THREE.AnimationMixer | null = null;
-  private clock: THREE.Clock = new THREE.Clock();
-  
-  // AR Effects and Overlays
-  private particles: THREE.Points[] = [];
-  private holographicPanels: THREE.Group[] = [];
-  
-  // Assembly tracking
+  private isInitialized: boolean = false;
   private assemblyStartTime: number = Date.now();
+  private animationFrame: number | null = null;
   
   async initialize(): Promise<void> {
-    console.log('🚀 Initializing AR Technology Showcase...');
+    console.log('🚀 Initializing Lightweight AR Showcase...');
     
     try {
-      // Set up Three.js scene
-      this.scene = new THREE.Scene();
-      this.scene.background = null; // Transparent for AR overlay
-      
-      // Set up camera (will be adjusted to match video feed)
-      this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-      this.camera.position.set(0, 0, 5);
-      
-      // Load ESP32 3D Model
-      await this.loadESP32Model();
-      
-      // Set up lighting for professional appearance
-      this.setupLighting();
-      
-      // Initialize particle systems
-      this.initializeParticleSystem();
-      
-      // Create holographic information panels
-      this.createHolographicPanels();
-      
-      console.log('✅ AR Technology Showcase initialized successfully');
+      this.isInitialized = true;
+      console.log('✅ Lightweight AR ready - using optimized Canvas 2D rendering');
       
     } catch (error) {
       console.error('❌ AR initialization failed:', error);
@@ -90,192 +60,147 @@ class ARService {
     }
   }
   
-  // Load and prepare ESP32 3D model
-  private async loadESP32Model(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.loader.load(
-        '/models/esp32.glb',
-        (gltf) => {
-          console.log('✅ ESP32 3D model loaded successfully');
-          
-          this.esp32Model = gltf.scene;
-          
-          // Scale model appropriately
-          this.esp32Model.scale.set(0.1, 0.1, 0.1);
-          
-          // Set up materials for AR appearance
-          this.esp32Model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              // Add holographic material effect
-              child.material = new THREE.MeshPhongMaterial({
-                color: 0x00ff88,
-                transparent: true,
-                opacity: 0.8,
-                emissive: 0x004422,
-                wireframe: false
-              });
-              
-              // Add glowing outline
-              const edges = new THREE.EdgesGeometry(child.geometry);
-              const lineMaterial = new THREE.LineBasicMaterial({ 
-                color: 0x00ffff, 
-                transparent: true, 
-                opacity: 0.6 
-              });
-              const wireframe = new THREE.LineSegments(edges, lineMaterial);
-              child.add(wireframe);
-            }
-          });
-          
-          // Set up animations if available
-          if (gltf.animations && gltf.animations.length > 0) {
-            this.animationMixer = new THREE.AnimationMixer(this.esp32Model);
-            gltf.animations.forEach((clip) => {
-              const action = this.animationMixer!.clipAction(clip);
-              action.play();
-            });
-          }
-          
-          resolve();
-        },
-        (progress) => {
-          console.log('📦 ESP32 model loading progress:', (progress.loaded / progress.total * 100) + '%');
-        },
-        (error) => {
-          console.error('❌ ESP32 model loading failed:', error);
-          reject(error);
-        }
-      );
-    });
-  }
-  
-  // Set up professional lighting
-  private setupLighting(): void {
-    if (!this.scene) return;
+  // Lightweight AR drawing using Canvas 2D
+  private drawLightweightAR(ctx: CanvasRenderingContext2D, detections: ARDetection[], effects: any): void {
+    const time = Date.now() * 0.001;
     
-    // Ambient light for overall illumination
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-    this.scene.add(ambientLight);
-    
-    // Directional light for depth
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 10, 5);
-    directionalLight.castShadow = true;
-    this.scene.add(directionalLight);
-    
-    // Point lights for AR glow effects
-    const pointLight1 = new THREE.PointLight(0x00ffff, 1, 100);
-    pointLight1.position.set(10, 10, 10);
-    this.scene.add(pointLight1);
-    
-    const pointLight2 = new THREE.PointLight(0xff00ff, 1, 100);
-    pointLight2.position.set(-10, -10, 10);
-    this.scene.add(pointLight2);
-  }
-  
-  // Initialize particle system for celebrations
-  private initializeParticleSystem(): void {
-    if (!this.scene) return;
-    
-    const particleCount = 1000;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    
-    for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 10;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 10;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
+    detections.forEach((detection, index) => {
+      // Draw holographic-style bounding box
+      this.drawHolographicBox(ctx, detection, time + index);
       
-      // Rainbow colors for celebration
-      const hue = Math.random();
-      const color = new THREE.Color().setHSL(hue, 1, 0.5);
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
+      // Draw floating info panel
+      this.drawFloatingInfo(ctx, detection, time);
+      
+      // Draw simple particle effects if high quality
+      if (effects.particles) {
+        this.drawSimpleParticles(ctx, detection, time);
+      }
+    });
+  }
+  
+  // Draw holographic-style bounding box
+  private drawHolographicBox(ctx: CanvasRenderingContext2D, detection: ARDetection, time: number): void {
+    const { x, y, width, height } = detection;
+    
+    // Animated colors
+    const hue1 = (time * 30) % 360;
+    const hue2 = (time * 30 + 180) % 360;
+    
+    // Gradient border
+    const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+    gradient.addColorStop(0, `hsl(${hue1}, 100%, 50%)`);
+    gradient.addColorStop(1, `hsl(${hue2}, 100%, 50%)`);
+    
+    // Glowing effect
+    ctx.shadowColor = `hsl(${hue1}, 100%, 50%)`;
+    ctx.shadowBlur = 15;
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 3;
+    
+    // Animated corner brackets
+    const cornerSize = 20;
+    const offset = Math.sin(time * 2) * 3;
+    
+    ctx.beginPath();
+    // Top-left corner
+    ctx.moveTo(x - offset, y + cornerSize);
+    ctx.lineTo(x - offset, y - offset);
+    ctx.lineTo(x + cornerSize, y - offset);
+    
+    // Top-right corner
+    ctx.moveTo(x + width - cornerSize, y - offset);
+    ctx.lineTo(x + width + offset, y - offset);
+    ctx.lineTo(x + width + offset, y + cornerSize);
+    
+    // Bottom-right corner
+    ctx.moveTo(x + width + offset, y + height - cornerSize);
+    ctx.lineTo(x + width + offset, y + height + offset);
+    ctx.lineTo(x + width - cornerSize, y + height + offset);
+    
+    // Bottom-left corner
+    ctx.moveTo(x + cornerSize, y + height + offset);
+    ctx.lineTo(x - offset, y + height + offset);
+    ctx.lineTo(x - offset, y + height - cornerSize);
+    
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  
+  // Draw floating information panel
+  private drawFloatingInfo(ctx: CanvasRenderingContext2D, detection: ARDetection, time: number): void {
+    const { x, y, width, confidence } = detection;
+    
+    // Floating position
+    const floatY = y - 40 + Math.sin(time + x) * 8;
+    const panelWidth = 120;
+    const panelHeight = 30;
+    const panelX = x + width / 2 - panelWidth / 2;
+    
+    // Holographic panel background
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
+    ctx.fillRect(panelX, floatY, panelWidth, panelHeight);
+    
+    // Glowing border
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(panelX, floatY, panelWidth, panelHeight);
+    
+    // AR text
+    ctx.fillStyle = '#00ffff';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`ESP32 AR`, panelX + panelWidth / 2, floatY + 12);
+    ctx.fillText(`${(confidence * 100).toFixed(0)}%`, panelX + panelWidth / 2, floatY + 24);
+  }
+  
+  // Draw simple particle celebration
+  private drawSimpleParticles(ctx: CanvasRenderingContext2D, detection: ARDetection, time: number): void {
+    const { x, y, width, height } = detection;
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    
+    // Simple particle burst
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const radius = 30 + Math.sin(time * 3) * 10;
+      const particleX = centerX + Math.cos(angle + time) * radius;
+      const particleY = centerY + Math.sin(angle + time) * radius;
+      
+      // Rainbow particle
+      const hue = (time * 60 + i * 30) % 360;
+      ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+      ctx.beginPath();
+      ctx.arc(particleX, particleY, 2, 0, Math.PI * 2);
+      ctx.fill();
     }
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    
-    const material = new THREE.PointsMaterial({
-      size: 0.1,
-      transparent: true,
-      opacity: 0.7,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const particles = new THREE.Points(geometry, material);
-    particles.visible = false; // Initially hidden
-    this.particles.push(particles);
-    this.scene.add(particles);
   }
   
-  // Create holographic information panels
-  private createHolographicPanels(): void {
-    if (!this.scene) return;
-    
-    // Create floating information panel
-    const panelGeometry = new THREE.PlaneGeometry(2, 1);
-    const panelMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      transparent: true,
-      opacity: 0.3,
-      side: THREE.DoubleSide
-    });
-    
-    const panel = new THREE.Mesh(panelGeometry, panelMaterial);
-    panel.position.set(0, 2, 0);
-    
-    // Add border glow
-    const borderGeometry = new THREE.EdgesGeometry(panelGeometry);
-    const borderMaterial = new THREE.LineBasicMaterial({ 
-      color: 0x00ffff, 
-      transparent: true, 
-      opacity: 0.8 
-    });
-    const border = new THREE.LineSegments(borderGeometry, borderMaterial);
-    panel.add(border);
-    
-    const panelGroup = new THREE.Group();
-    panelGroup.add(panel);
-    panelGroup.visible = false;
-    
-    this.holographicPanels.push(panelGroup);
-    this.scene.add(panelGroup);
-  }
-  
-  // Main AR detection and overlay function
-  async detectAndOverlay(canvas: HTMLCanvasElement, videoElement: HTMLVideoElement, detections: any[]): Promise<ARShowcaseAnalysis> {
-    if (!this.scene || !this.camera) {
+  // Lightweight AR detection and overlay function
+  async detectAndOverlay(canvas: HTMLCanvasElement, _videoElement: HTMLVideoElement, detections: any[]): Promise<ARShowcaseAnalysis> {
+    if (!this.isInitialized) {
       throw new Error('AR system not initialized');
     }
     
     try {
-      // Update canvas and camera for AR alignment
-      this.setupRenderer(canvas);
-      this.alignCameraToVideo(videoElement);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not get canvas context');
       
-      // Process ESP32 detections and create AR overlays
+      // Process detections
       const arDetections = this.processDetections(detections);
-      const overlays = await this.createAROverlays(arDetections);
+      const overlays = this.createLightweightOverlays(arDetections);
       
-      // Calculate assembly metrics
+      // Calculate metrics
       const metrics = this.calculateAssemblyMetrics(arDetections);
       
-      // Determine showcase effects
+      // Determine effects
       const showcaseEffects = {
         particles: metrics.qualityScore > 80,
         hologram: arDetections.length > 0,
         certification: metrics.qualityScore === 100
       };
       
-      // Update AR scene
-      this.updateARScene(arDetections, showcaseEffects);
-      
-      // Render AR overlay
-      this.renderAROverlay();
+      // Draw lightweight AR effects
+      this.drawLightweightAR(ctx, arDetections, showcaseEffects);
       
       return {
         detections: arDetections,
@@ -291,26 +216,16 @@ class ARService {
     }
   }
   
-  // Set up WebGL renderer for AR overlay
-  private setupRenderer(canvas: HTMLCanvasElement): void {
-    if (!this.renderer) {
-      this.renderer = new THREE.WebGLRenderer({ 
-        canvas, 
-        alpha: true, 
-        antialias: true 
-      });
-      this.renderer.setSize(canvas.width, canvas.height);
-      this.renderer.setClearColor(0x000000, 0); // Transparent background
-    }
-  }
-  
-  // Align 3D camera to video feed
-  private alignCameraToVideo(videoElement: HTMLVideoElement): void {
-    if (!this.camera) return;
-    
-    const aspect = videoElement.videoWidth / videoElement.videoHeight;
-    this.camera.aspect = aspect;
-    this.camera.updateProjectionMatrix();
+  // Create lightweight overlays
+  private createLightweightOverlays(detections: ARDetection[]): AROverlay[] {
+    return detections.map(detection => ({
+      x: detection.x,
+      y: detection.y,
+      width: detection.width,
+      height: detection.height,
+      visible: true,
+      animation: 'float'
+    }));
   }
   
   // Process 2D detections into AR detections
@@ -326,56 +241,12 @@ class ARService {
     }));
   }
   
-  // Create AR overlays for detections
-  private async createAROverlays(detections: ARDetection[]): Promise<AROverlay[]> {
-    const overlays: AROverlay[] = [];
-    
-    // Clear existing ESP32 models from scene
-    if (this.scene) {
-      this.scene.children = this.scene.children.filter(child => 
-        !child.userData.isESP32Model
-      );
-    }
-    
-    detections.forEach((detection, index) => {
-      if (this.esp32Model && this.scene) {
-        // Clone the ESP32 model for each detection
-        const modelClone = this.esp32Model.clone();
-        modelClone.userData.isESP32Model = true;
-        
-        // Position model based on 2D detection (convert to 3D space)
-        const x = (detection.x / 640 - 0.5) * 10; // Normalize to scene space
-        const y = -(detection.y / 480 - 0.5) * 7.5; // Flip Y and normalize
-        const z = 0;
-        
-        modelClone.position.set(x, y, z);
-        
-        // Add floating animation
-        const time = Date.now() * 0.001;
-        modelClone.position.y += Math.sin(time + index) * 0.2;
-        modelClone.rotation.y = time * 0.5;
-        
-        this.scene.add(modelClone);
-        
-        overlays.push({
-          position: new THREE.Vector3(x, y, z),
-          rotation: new THREE.Euler(0, time * 0.5, 0),
-          scale: new THREE.Vector3(0.1, 0.1, 0.1),
-          visible: true,
-          animation: 'float'
-        });
-      }
-    });
-    
-    return overlays;
-  }
-  
-  // Calculate comprehensive assembly metrics
+  // Calculate lightweight assembly metrics
   private calculateAssemblyMetrics(detections: ARDetection[]): AssemblyMetrics {
     const currentTime = Date.now();
-    const assemblyTime = (currentTime - this.assemblyStartTime) / 1000; // seconds
+    const assemblyTime = (currentTime - this.assemblyStartTime) / 1000;
     
-    const totalComponents = 2; // Expected ESP32 boards
+    const totalComponents = 2;
     const detectedComponents = detections.length;
     
     let qualityScore = 0;
@@ -397,49 +268,6 @@ class ARService {
       certificationLevel,
       timestamp: new Date().toISOString()
     };
-  }
-  
-  // Update AR scene with effects
-  private updateARScene(detections: ARDetection[], effects: any): void {
-    if (!this.scene) return;
-    
-    // Update particle effects
-    this.particles.forEach(particles => {
-      particles.visible = effects.particles;
-      if (effects.particles) {
-        const time = this.clock.getElapsedTime();
-        particles.rotation.y = time * 0.1;
-        
-        // Animate particles
-        const positions = particles.geometry.attributes.position.array as Float32Array;
-        for (let i = 0; i < positions.length; i += 3) {
-          positions[i + 1] += Math.sin(time + i) * 0.01;
-        }
-        particles.geometry.attributes.position.needsUpdate = true;
-      }
-    });
-    
-    // Update holographic panels
-    this.holographicPanels.forEach((panel, index) => {
-      panel.visible = effects.hologram && detections.length > index;
-      if (panel.visible) {
-        const time = this.clock.getElapsedTime();
-        panel.rotation.y = Math.sin(time) * 0.1;
-        panel.position.y = 2 + Math.sin(time + index) * 0.3;
-      }
-    });
-    
-    // Update animations
-    if (this.animationMixer) {
-      this.animationMixer.update(this.clock.getDelta());
-    }
-  }
-  
-  // Render AR overlay
-  private renderAROverlay(): void {
-    if (this.renderer && this.scene && this.camera) {
-      this.renderer.render(this.scene, this.camera);
-    }
   }
   
   // Generate AR certification report
@@ -471,22 +299,15 @@ class ARService {
     `;
   }
   
-  // Cleanup AR resources
+  // Cleanup lightweight AR resources
   dispose(): void {
-    if (this.renderer) {
-      this.renderer.dispose();
-      this.renderer = null;
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
     }
     
-    if (this.scene) {
-      this.scene.clear();
-      this.scene = null;
-    }
-    
-    this.particles = [];
-    this.holographicPanels = [];
-    
-    console.log('🧹 AR Service resources cleaned up');
+    this.isInitialized = false;
+    console.log('🧹 Lightweight AR Service cleaned up');
   }
 }
 
