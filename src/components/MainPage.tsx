@@ -14,7 +14,7 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
       {/* Header matching features page */}
       <div className="page-header">
         <div className="header-spacer"></div>
-        <h1 className="page-title">{t('title')}</h1>
+        <h1 className="main-title">{t('title')}</h1>
         <div className="header-actions">
           <LanguageSwitcher />
         </div>
@@ -22,13 +22,9 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
 
       {/* Main Content Section */}
       <section className="features-section">
-        <div className="main-hero">
-          <p className="main-subtitle">{t('subtitle')}</p>
-          <p className="main-tagline">{t('main.tagline')}</p>
-        </div>
-
-        {/* Navigation Cards */}
-        <div className="features-grid">
+        <div className="main-content">
+          {/* Navigation Cards */}
+          <div className="features-grid">
           <div 
             className="feature-card"
             onClick={() => onNavigate('missions')}
@@ -40,7 +36,6 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
             </div>
             <div className="feature-content">
               <h3 className="feature-title">{t('main.navigation.missions')}</h3>
-              <p className="feature-description">{t('main.navigation.missionsDesc')}</p>
             </div>
           </div>
 
@@ -54,11 +49,11 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
                 <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-                         <div className="feature-content">
-               <h3 className="feature-title">{t('main.navigation.admin')}</h3>
-               <p className="feature-description">{t('main.navigation.adminDesc')}</p>
-             </div>
+                                     <div className="feature-content">
+              <h3 className="feature-title">{t('main.navigation.admin')}</h3>
+            </div>
           </div>
+        </div>
         </div>
 
         {/* Footer */}

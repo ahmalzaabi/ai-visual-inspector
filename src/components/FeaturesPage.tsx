@@ -670,7 +670,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                   key={featureItem.id}
                   icon={featureItem.icon}
                   feature={featureItem.feature}
-                  description={featureItem.description}
+
                   onClick={() => handleFeatureClick(featureItem.id)}
                 />
               ))}
@@ -687,7 +687,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               ← {t('actions.back')}
             </button>
             <h2 className="feature-title">
-              🔧 {t('features.assembly')}
+              <span className="icon-esp32"></span> {t('features.assembly')}
             </h2>
           </div>
 
@@ -702,7 +702,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               onClick={isPlaying ? stopCamera : startCamera}
               disabled={isLoading}
             >
-              {isLoading ? '⏳' : (isPlaying ? '📷 Stop Camera' : '📷 Start Camera')}
+              {isLoading ? '⏳' : (isPlaying ? `📷 ${t('actions.stopCamera')}` : `📷 ${t('actions.startCamera')}`)}
             </button>
             
             {isPlaying && (
@@ -711,7 +711,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 onClick={isDetecting ? stopDetection : startDetection}
                 disabled={isLoading}
               >
-                {isLoading ? '⏳ Loading...' : (isDetecting ? '⏹️ Stop Detection' : '🚀 Start Detection')}
+                {isLoading ? '⏳ Loading...' : (isDetecting ? `⏹️ ${t('actions.stopDetection')}` : `🚀 ${t('actions.startDetection')}`)}
               </button>
             )}
           </div>
@@ -766,7 +766,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                    )}
                    {arShowcaseAnalysis.showcaseEffects.dataStream && (
                      <span className="detection-count-badge ar-datastream">
-                       <span className="stream-icon">⚡</span>
+                       <span className="stream-icon icon-motor"></span>
                        <span className="count-label">{t('assembly.arShowcase.dataStreamActive')}</span>
                      </span>
                    )}
@@ -802,7 +802,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                   <div key={step.id} className={`step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
                     <div className="step-indicator">
                       <span className="step-icon">{isCompleted ? '✅' : step.icon}</span>
-                      <span className="step-number">{step.id}</span>
+                                             <span className={`step-icon step-icon-${step.id}`}></span>
                     </div>
                     
                     <div className="step-content">
@@ -1065,7 +1065,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 onClick={isPlaying ? stopCamera : startCamera}
                 disabled={isLoading}
               >
-                {isLoading ? 'Loading...' : (isPlaying ? 'Stop Camera' : 'Start Camera')}
+                {isLoading ? 'Loading...' : (isPlaying ? t('actions.stopCamera') : t('actions.startCamera'))}
               </button>
             </div>
 
