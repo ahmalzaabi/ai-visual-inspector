@@ -61,6 +61,22 @@ const resources = {
           detected: "Anti-Static Strap Detected",
           notDetected: "No Anti-Static Strap"
         },
+        arShowcase: {
+          qualityScore: "Quality: {score}%",
+          startShowcase: "Start AR Showcase",
+          generateCertificate: "Generate Certificate",
+          awaitingCompletion: "Awaiting Completion",
+          newDemonstration: "New Demonstration",
+          certification: {
+            bronze: "Bronze Certification",
+            silver: "Silver Certification", 
+            gold: "Gold Certification",
+            platinum: "Platinum Certification"
+          },
+          effects: {
+            active: "AR Effects Active"
+          }
+        },
         steps: {
           step1: {
             title: "Place ESP32 Boards",
@@ -78,9 +94,9 @@ const resources = {
             requirement: "Anti-static strap detected"
           },
           step4: {
-            title: "Final Verification",
-            description: "System test and configuration check",
-            requirement: "All systems operational"
+            title: "AR Technology Showcase",
+            description: "Advanced AR visualization and certification",
+            requirement: "AR demonstration complete"
           }
         },
         status: {
@@ -96,6 +112,10 @@ const resources = {
           noWristStrap: "Please put on blue anti-static wrist strap",
           checkingWristStrap: "Checking for anti-static strap...",
           detectingWristStrap: "Detecting anti-static wrist strap...",
+          arShowcaseComplete: "AR Showcase Complete! {certification}",
+          arShowcaseProgress: "AR Analysis: {score}% ({time}s)",
+          initializingAR: "Initializing AR Technology...",
+          loadingARShowcase: "Loading AR Showcase...",
           manualStep: "Manual step - Click \"Next\" when complete",
           completionMessage: "🎉 Complete Assembly"
         }
@@ -252,6 +272,22 @@ const resources = {
           detected: "تم اكتشاف سوار مضاد للكهرباء الساكنة",
           notDetected: "لا يوجد سوار مضاد للكهرباء الساكنة"
         },
+        arShowcase: {
+          qualityScore: "الجودة: {score}%",
+          startShowcase: "بدء عرض الواقع المعزز",
+          generateCertificate: "إنشاء الشهادة",
+          awaitingCompletion: "في انتظار الاكتمال",
+          newDemonstration: "عرض جديد",
+          certification: {
+            bronze: "شهادة برونزية",
+            silver: "شهادة فضية",
+            gold: "شهادة ذهبية",
+            platinum: "شهادة بلاتينية"
+          },
+          effects: {
+            active: "تأثيرات الواقع المعزز نشطة"
+          }
+        },
         steps: {
           step1: {
             title: "وضع لوحات ESP32",
@@ -269,9 +305,9 @@ const resources = {
             requirement: "اكتشاف السوار المضاد للكهرباء الساكنة"
           },
           step4: {
-            title: "التحقق النهائي",
-            description: "اختبار النظام وفحص التكوين",
-            requirement: "جميع الأنظمة تعمل"
+            title: "عرض تقنية الواقع المعزز",
+            description: "تصور متقدم بالواقع المعزز وإصدار الشهادة",
+            requirement: "اكتمال عرض الواقع المعزز"
           }
         },
         status: {
@@ -287,6 +323,10 @@ const resources = {
           noWristStrap: "يرجى ارتداء السوار الأزرق المضاد للكهرباء الساكنة",
           checkingWristStrap: "جاري فحص السوار المضاد للكهرباء الساكنة...",
           detectingWristStrap: "جاري اكتشاف السوار المضاد للكهرباء الساكنة...",
+          arShowcaseComplete: "اكتمل عرض الواقع المعزز! {certification}",
+          arShowcaseProgress: "تحليل الواقع المعزز: {score}% ({time}ث)",
+          initializingAR: "جاري تهيئة تقنية الواقع المعزز...",
+          loadingARShowcase: "جاري تحميل عرض الواقع المعزز...",
           manualStep: "خطوة يدوية - اضغط \"التالي\" عند الانتهاء",
           completionMessage: "🎉 إكمال التجميع"
         }

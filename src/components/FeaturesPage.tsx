@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mlService } from '../services/mlService';
 import type { MotorWireAnalysis, WristStrapAnalysis } from '../services/mlService';
+import { arService } from '../services/arService';
+import type { ARShowcaseAnalysis } from '../services/arService';
 import FeatureCard from './FeatureCard';
 
 interface FeaturesPageProps {
@@ -19,6 +21,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [detectionCount, setDetectionCount] = useState(0);
   const [motorWireAnalysis, setMotorWireAnalysis] = useState<MotorWireAnalysis | null>(null);
   const [wristStrapAnalysis, setWristStrapAnalysis] = useState<WristStrapAnalysis | null>(null);
+  const [arShowcaseAnalysis, setArShowcaseAnalysis] = useState<ARShowcaseAnalysis | null>(null);
+  const [arInitialized, setArInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -381,6 +385,54 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     });
   };
 
+  // AR Technology Showcase Function for Step 4
+  const performARShowcase = async () => {
+    if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly' || currentStep !== 4) {
+      return;
+    }
+
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('❌ Could not get canvas context');
+        return;
+      }
+
+      if (video.readyState < 2) {
+        return;
+      }
+
+      // CRITICAL: Ensure canvas dimensions match video exactly
+      const videoRect = video.getBoundingClientRect();
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.style.width = videoRect.width + 'px';
+      canvas.style.height = videoRect.height + 'px';
+
+      // Get ESP32 detections for AR overlay
+      const esp32Analysis = await mlService.detectESP32(canvas, video);
+      
+      // Run AR Technology Showcase
+      const arAnalysis = await arService.detectAndOverlay(canvas, video, esp32Analysis.detections);
+      
+      setArShowcaseAnalysis(arAnalysis);
+      setDetectionCount(esp32Analysis.detections.length); // Keep ESP32 count for metrics
+
+      console.log('🚀 AR Showcase updated:', {
+        detections: arAnalysis.detections.length,
+        qualityScore: arAnalysis.metrics.qualityScore,
+        effects: arAnalysis.showcaseEffects
+      });
+
+    } catch (err) {
+      console.error('❌ AR showcase failed:', err);
+      setArShowcaseAnalysis(null);
+    }
+  };
+
   // Wrist Strap Detection Function for Step 3
   const performWristStrapDetection = async () => {
     if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly' || currentStep !== 3) {
@@ -533,8 +585,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       await performMotorWireDetection();
     } else if (currentStep === 3) {
       await performWristStrapDetection();
+    } else if (currentStep === 4) {
+      await performARShowcase();
     }
-    // Step 4 is manual, no detection needed
   };
 
   const startDetection = async () => {
@@ -560,6 +613,14 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         await mlService.switchToModel('motor_wire');
       } else if (currentStep === 3) {
         await mlService.switchToModel('hands');
+      } else if (currentStep === 4) {
+        // Step 4: Initialize AR Technology Showcase
+        if (!arInitialized) {
+          console.log('🚀 Initializing AR Technology Showcase...');
+          await arService.initialize();
+          setArInitialized(true);
+        }
+        await mlService.switchToModel('esp32'); // Use ESP32 detection for AR overlays
       }
 
       setIsDetecting(true);
@@ -632,7 +693,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
           <div className="video-container">
             <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
-            <canvas ref={canvasRef} className={`detection-overlay ${isDetecting ? 'active' : ''}`} />
+                            <canvas ref={canvasRef} className={`detection-overlay ${isDetecting ? 'active' : ''} ${currentStep === 4 && arShowcaseAnalysis ? 'ar-active' : ''}`} />
           </div>
 
           <div className="controls">
@@ -689,10 +750,32 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                  </div>
                )}
                
-               {currentStep === 4 && (
-                 <span className="detection-count-badge manual-step">
-                   <span className="count-label">{t('assembly.manualStepIndicator')}</span>
-                 </span>
+               {currentStep === 4 && arShowcaseAnalysis && (
+                 <div className="ar-showcase-status">
+                   <span className={`detection-count-badge ar-quality-${arShowcaseAnalysis.metrics.certificationLevel}`}>
+                     <span className="ar-icon">🚀</span>
+                     <span className="count-label">
+                       {t('assembly.arShowcase.qualityScore', { score: arShowcaseAnalysis.metrics.qualityScore })}
+                     </span>
+                   </span>
+                   <span className={`detection-count-badge ar-certification-${arShowcaseAnalysis.metrics.certificationLevel}`}>
+                     <span className="certification-icon">
+                       {arShowcaseAnalysis.metrics.certificationLevel === 'platinum' && '🏆'}
+                       {arShowcaseAnalysis.metrics.certificationLevel === 'gold' && '🥇'}
+                       {arShowcaseAnalysis.metrics.certificationLevel === 'silver' && '🥈'}
+                       {arShowcaseAnalysis.metrics.certificationLevel === 'bronze' && '🥉'}
+                     </span>
+                     <span className="count-label">
+                       {t(`assembly.arShowcase.certification.${arShowcaseAnalysis.metrics.certificationLevel}`)}
+                     </span>
+                   </span>
+                   {arShowcaseAnalysis.showcaseEffects.particles && (
+                     <span className="detection-count-badge ar-effects">
+                       <span className="effects-icon">✨</span>
+                       <span className="count-label">{t('assembly.arShowcase.effects.active')}</span>
+                     </span>
+                   )}
+                 </div>
                )}
              </div>
           </div>
@@ -705,14 +788,17 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                  const isStep1 = step.id === 1;
                  const isStep2 = step.id === 2;
                  const isStep3 = step.id === 3;
+                 const isStep4 = step.id === 4;
                  const step1Complete = detectionCount >= 2;
                  const step2Complete = motorWireAnalysis?.isFullyConnected || false;
                  const step3Complete = wristStrapAnalysis?.isWearingStrap || false;
+                 const step4Complete = arShowcaseAnalysis?.isComplete || false;
                  
                  const isCompleted = 
                    (step.id === 1 && step1Complete) ||
                    (step.id === 2 && step2Complete) ||
                    (step.id === 3 && step3Complete) ||
+                   (step.id === 4 && step4Complete) ||
                    step.id < currentStep;
                    
                  const isCurrent = step.id === currentStep;
@@ -794,11 +880,32 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                          </div>
                        )}
                        
-                       {!isStep1 && !isStep2 && !isStep3 && isCurrent && (
+                       {isStep4 && isCurrent && (
                          <div className="step-status">
-                           <span className="status-pending">
-                             📋 {t('assembly.status.manualStep')}
-                           </span>
+                           {arShowcaseAnalysis ? (
+                             arShowcaseAnalysis.isComplete ? (
+                               <span className="status-success">
+                                 🏆 {t('assembly.status.arShowcaseComplete', { 
+                                   certification: t(`assembly.arShowcase.certification.${arShowcaseAnalysis.metrics.certificationLevel}`)
+                                 })}
+                               </span>
+                             ) : arShowcaseAnalysis.metrics.qualityScore > 0 ? (
+                               <span className="status-warning">
+                                 🚀 {t('assembly.status.arShowcaseProgress', { 
+                                   score: arShowcaseAnalysis.metrics.qualityScore,
+                                   time: arShowcaseAnalysis.metrics.assemblyTime.toFixed(1)
+                                 })}
+                               </span>
+                             ) : (
+                               <span className="status-pending">
+                                 🔍 {t('assembly.status.initializingAR')}
+                               </span>
+                             )
+                           ) : (
+                             <span className="status-pending">
+                               🚀 {t('assembly.status.loadingARShowcase')}
+                             </span>
+                           )}
                          </div>
                        )}
                     </div>
@@ -856,10 +963,62 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {currentStep === 3 && wristStrapAnalysis?.isWearingStrap && (
                  <button 
                    className="btn btn-success"
-                   onClick={() => setCurrentStep(4)}
+                   onClick={async () => {
+                     setCurrentStep(4);
+                     // Initialize AR showcase for step 4
+                     if (!arInitialized) {
+                       setIsLoading(true);
+                       try {
+                         await arService.initialize();
+                         setArInitialized(true);
+                       } catch (error) {
+                         console.error('AR initialization failed:', error);
+                       } finally {
+                         setIsLoading(false);
+                       }
+                     }
+                   }}
                  >
-                   {t('actions.next')} →
+                   🚀 {t('assembly.arShowcase.startShowcase')} →
                  </button>
+               )}
+               
+               {currentStep === 4 && arShowcaseAnalysis && (
+                 <div className="ar-showcase-controls">
+                   <button 
+                     className={`btn ${arShowcaseAnalysis.isComplete ? 'btn-success' : 'btn-primary'}`}
+                     onClick={() => {
+                       if (arShowcaseAnalysis.isComplete) {
+                         // Generate and display certification report
+                         const report = arService.generateCertificationReport(arShowcaseAnalysis.metrics);
+                         alert(report);
+                       }
+                     }}
+                     disabled={!arShowcaseAnalysis.isComplete}
+                   >
+                     {arShowcaseAnalysis.isComplete ? (
+                       <>🏆 {t('assembly.arShowcase.generateCertificate')}</>
+                     ) : (
+                       <>⏳ {t('assembly.arShowcase.awaitingCompletion')}</>
+                     )}
+                   </button>
+                   
+                   {arShowcaseAnalysis.isComplete && (
+                     <button 
+                       className="btn btn-gradient"
+                       onClick={() => {
+                         // Reset for new demonstration
+                         setCurrentStep(1);
+                         setArShowcaseAnalysis(null);
+                         setDetectionCount(0);
+                         setMotorWireAnalysis(null);
+                         setWristStrapAnalysis(null);
+                       }}
+                     >
+                       🔄 {t('assembly.arShowcase.newDemonstration')}
+                     </button>
+                   )}
+                 </div>
                )}
               
                              {currentStep > 1 && currentStep < 4 && (
