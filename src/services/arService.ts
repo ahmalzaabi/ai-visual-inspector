@@ -20,32 +20,32 @@ export interface AROverlay {
   animation?: string;
 }
 
-export interface AssemblyMetrics {
-  totalComponents: number;
-  detectedComponents: number;
-  qualityScore: number;
-  assemblyTime: number;
-  certificationLevel: 'bronze' | 'silver' | 'gold' | 'platinum';
-  timestamp: string;
+export interface ESP32Info {
+  chipModel: string;
+  connectivity: string;
+  frequency: string;
+  status: 'active' | 'detected' | 'ready';
+  voltage: string;
+  temperature: string;
 }
 
 export interface ARShowcaseAnalysis {
   detections: ARDetection[];
   overlays: AROverlay[];
-  metrics: AssemblyMetrics;
-  isComplete: boolean;
+  esp32Info: ESP32Info[];
+  isActive: boolean;
   showcaseEffects: {
     particles: boolean;
     hologram: boolean;
-    certification: boolean;
+    dataStream: boolean;
   };
 }
 
-// Lightweight AR Service using Canvas 2D
+  // Lightweight AR Service using Canvas 2D
 class ARService {
   private isInitialized: boolean = false;
-  private assemblyStartTime: number = Date.now();
   private animationFrame: number | null = null;
+  private currentLanguage: string = 'en';
   
   async initialize(): Promise<void> {
     console.log('🚀 Initializing Lightweight AR Showcase...');
@@ -61,19 +61,24 @@ class ARService {
   }
   
   // Lightweight AR drawing using Canvas 2D
-  private drawLightweightAR(ctx: CanvasRenderingContext2D, detections: ARDetection[], effects: any): void {
+  private drawLightweightAR(ctx: CanvasRenderingContext2D, detections: ARDetection[], esp32Info: ESP32Info[], effects: any): void {
     const time = Date.now() * 0.001;
     
     detections.forEach((detection, index) => {
       // Draw holographic-style bounding box
       this.drawHolographicBox(ctx, detection, time + index);
       
-      // Draw floating info panel
-      this.drawFloatingInfo(ctx, detection, time);
+      // Draw amazing ESP32 info display
+      this.drawESP32InfoDisplay(ctx, detection, esp32Info[index] || this.getDefaultESP32Info(), time + index);
       
-      // Draw simple particle effects if high quality
+      // Draw unified color particle effects
       if (effects.particles) {
-        this.drawSimpleParticles(ctx, detection, time);
+        this.drawUnifiedParticles(ctx, detection, time);
+      }
+      
+      // Draw animated data streams
+      if (effects.dataStream) {
+        this.drawDataStreams(ctx, detection, time + index);
       }
     });
   }
@@ -117,7 +122,7 @@ class ARService {
     ctx.lineTo(x + width + offset, y + height + offset);
     ctx.lineTo(x + width - cornerSize, y + height + offset);
     
-    // Bottom-left corner
+    // Bottom-left corner  
     ctx.moveTo(x + cornerSize, y + height + offset);
     ctx.lineTo(x - offset, y + height + offset);
     ctx.lineTo(x - offset, y + height - cornerSize);
@@ -126,53 +131,225 @@ class ARService {
     ctx.shadowBlur = 0;
   }
   
-  // Draw floating information panel
-  private drawFloatingInfo(ctx: CanvasRenderingContext2D, detection: ARDetection, time: number): void {
-    const { x, y, width, confidence } = detection;
+  // Draw amazing ESP32 info display
+  private drawESP32InfoDisplay(ctx: CanvasRenderingContext2D, detection: ARDetection, esp32Info: ESP32Info, time: number): void {
+    const { x, y, width } = detection;
     
-    // Floating position
-    const floatY = y - 40 + Math.sin(time + x) * 8;
-    const panelWidth = 120;
-    const panelHeight = 30;
-    const panelX = x + width / 2 - panelWidth / 2;
+    // Main holographic info card floating above ESP32
+    const cardWidth = 180;
+    const cardHeight = 120;
+    const cardX = x + width / 2 - cardWidth / 2;
+    const cardY = y - cardHeight - 20 + Math.sin(time) * 8;
     
-    // Holographic panel background
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
-    ctx.fillRect(panelX, floatY, panelWidth, panelHeight);
+    // Holographic card background with gradient
+    const gradient = ctx.createLinearGradient(cardX, cardY, cardX + cardWidth, cardY + cardHeight);
+    gradient.addColorStop(0, 'rgba(0, 255, 255, 0.15)');
+    gradient.addColorStop(0.5, 'rgba(0, 150, 255, 0.1)');
+    gradient.addColorStop(1, 'rgba(100, 0, 255, 0.15)');
     
-    // Glowing border
-    ctx.strokeStyle = '#00ffff';
+    ctx.fillStyle = gradient;
+    ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+    
+    // Animated border
+    const borderGlow = Math.sin(time * 2) * 0.3 + 0.7;
+    ctx.strokeStyle = `rgba(0, 255, 255, ${borderGlow})`;
     ctx.lineWidth = 2;
-    ctx.strokeRect(panelX, floatY, panelWidth, panelHeight);
+    ctx.strokeRect(cardX, cardY, cardWidth, cardHeight);
     
-    // AR text
+    // Corner indicators
+    this.drawCornerIndicators(ctx, cardX, cardY, cardWidth, cardHeight, time);
+    
+    // ESP32 Technical Info (Bilingual)
     ctx.fillStyle = '#00ffff';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`ESP32 AR`, panelX + panelWidth / 2, floatY + 12);
-    ctx.fillText(`${(confidence * 100).toFixed(0)}%`, panelX + panelWidth / 2, floatY + 24);
+    ctx.font = 'bold 14px "Courier New", monospace';
+    ctx.textAlign = 'left';
+    
+    const isArabic = this.currentLanguage === 'ar';
+    const lineHeight = 16;
+    let currentY = cardY + 20;
+    
+    // Chip Model
+    const chipText = isArabic ? 'معالج: ESP32-WROOM' : 'CHIP: ESP32-WROOM';
+    ctx.fillText(chipText, cardX + 10, currentY);
+    currentY += lineHeight;
+    
+    // Connectivity
+    const connectText = isArabic ? 'الاتصال: WiFi + BT' : 'CONN: WiFi + BT';
+    ctx.fillText(connectText, cardX + 10, currentY);
+    currentY += lineHeight;
+    
+    // Frequency
+    const freqText = isArabic ? 'التردد: ٢٤٠ ميجا' : 'FREQ: 240MHz';
+    ctx.fillText(freqText, cardX + 10, currentY);
+    currentY += lineHeight;
+    
+    // Status with animated indicator
+    const statusColor = this.getStatusColor(esp32Info.status);
+    ctx.fillStyle = statusColor;
+    const statusText = isArabic ? this.getArabicStatus(esp32Info.status) : esp32Info.status.toUpperCase();
+    ctx.fillText(`${isArabic ? 'الحالة:' : 'STATUS:'} ${statusText}`, cardX + 10, currentY);
+    
+    // Animated status indicator
+    const indicatorX = cardX + cardWidth - 20;
+    const indicatorY = cardY + 15;
+    const pulseSize = 3 + Math.sin(time * 4) * 2;
+    
+    ctx.fillStyle = statusColor;
+    ctx.beginPath();
+    ctx.arc(indicatorX, indicatorY, pulseSize, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Connection line from card to ESP32
+    this.drawConnectionLine(ctx, cardX + cardWidth / 2, cardY + cardHeight, x + width / 2, y, time);
   }
   
-  // Draw simple particle celebration
-  private drawSimpleParticles(ctx: CanvasRenderingContext2D, detection: ARDetection, time: number): void {
+  // Draw corner indicators for holographic effect
+  private drawCornerIndicators(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, time: number): void {
+    const cornerSize = 12;
+    const glow = Math.sin(time * 3) * 0.5 + 0.5;
+    
+    ctx.strokeStyle = `rgba(0, 255, 255, ${glow})`;
+    ctx.lineWidth = 3;
+    
+    // Top-left
+    ctx.beginPath();
+    ctx.moveTo(x, y + cornerSize);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x + cornerSize, y);
+    ctx.stroke();
+    
+    // Top-right
+    ctx.beginPath();
+    ctx.moveTo(x + width - cornerSize, y);
+    ctx.lineTo(x + width, y);
+    ctx.lineTo(x + width, y + cornerSize);
+    ctx.stroke();
+    
+    // Bottom-right
+    ctx.beginPath();
+    ctx.moveTo(x + width, y + height - cornerSize);
+    ctx.lineTo(x + width, y + height);
+    ctx.lineTo(x + width - cornerSize, y + height);
+    ctx.stroke();
+    
+    // Bottom-left
+    ctx.beginPath();
+    ctx.moveTo(x + cornerSize, y + height);
+    ctx.lineTo(x, y + height);
+    ctx.lineTo(x, y + height - cornerSize);
+    ctx.stroke();
+  }
+  
+  // Draw connection line from info card to ESP32
+  private drawConnectionLine(ctx: CanvasRenderingContext2D, startX: number, startY: number, endX: number, endY: number, time: number): void {
+    const segments = 8;
+    const amplitude = 10;
+    
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const x = startX + (endX - startX) * t;
+      const y = startY + (endY - startY) * t;
+      
+      // Add wave effect
+      const wave = Math.sin(time * 2 + t * Math.PI * 2) * amplitude * Math.sin(t * Math.PI);
+      const waveX = x + wave * Math.cos(Math.PI / 2);
+      
+      if (i === 0) {
+        ctx.moveTo(waveX, y);
+      } else {
+        ctx.lineTo(waveX, y);
+      }
+    }
+    ctx.stroke();
+    
+    // Animated dots along the line
+    for (let i = 0; i < 3; i++) {
+      const progress = (time * 0.5 + i * 0.3) % 1;
+      const dotX = startX + (endX - startX) * progress;
+      const dotY = startY + (endY - startY) * progress;
+      const wave = Math.sin(time * 2 + progress * Math.PI * 2) * amplitude * Math.sin(progress * Math.PI);
+      
+      ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+      ctx.beginPath();
+      ctx.arc(dotX + wave * Math.cos(Math.PI / 2), dotY, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  // Get status color based on ESP32 status
+  private getStatusColor(status: string): string {
+    switch (status) {
+      case 'active': return '#00ff00';
+      case 'ready': return '#00ffff'; 
+      case 'detected': return '#ffff00';
+      default: return '#ff6600';
+    }
+  }
+  
+  // Get Arabic status text
+  private getArabicStatus(status: string): string {
+    switch (status) {
+      case 'active': return 'نشط';
+      case 'ready': return 'جاهز';
+      case 'detected': return 'مكتشف';
+      default: return 'غير معروف';
+    }
+  }
+  
+  // Draw unified color particle effects
+  private drawUnifiedParticles(ctx: CanvasRenderingContext2D, detection: ARDetection, time: number): void {
     const { x, y, width, height } = detection;
     const centerX = x + width / 2;
     const centerY = y + height / 2;
     
-    // Simple particle burst
-    for (let i = 0; i < 12; i++) {
-      const angle = (i / 12) * Math.PI * 2;
-      const radius = 30 + Math.sin(time * 3) * 10;
-      const particleX = centerX + Math.cos(angle + time) * radius;
-      const particleY = centerY + Math.sin(angle + time) * radius;
+    // Unified cyan particle burst
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 25 + Math.sin(time * 2) * 8;
+      const particleX = centerX + Math.cos(angle + time * 0.5) * radius;
+      const particleY = centerY + Math.sin(angle + time * 0.5) * radius;
       
-      // Rainbow particle
-      const hue = (time * 60 + i * 30) % 360;
-      ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+      // Unified cyan color with varying opacity
+      const opacity = 0.5 + Math.sin(time * 3 + i) * 0.3;
+      ctx.fillStyle = `rgba(0, 255, 255, ${opacity})`;
       ctx.beginPath();
       ctx.arc(particleX, particleY, 2, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+  
+  // Draw animated data streams
+  private drawDataStreams(ctx: CanvasRenderingContext2D, detection: ARDetection, time: number): void {
+    const { x, y, width, height } = detection;
+    
+    // Vertical data streams on sides
+    for (let side = 0; side < 2; side++) {
+      const streamX = side === 0 ? x - 15 : x + width + 15;
+      
+      for (let i = 0; i < 6; i++) {
+        const streamY = y + (i * height / 5) + Math.sin(time * 2 + i) * 5;
+        const alpha = Math.sin(time * 3 + i + side) * 0.5 + 0.5;
+        
+        ctx.fillStyle = `rgba(0, 255, 255, ${alpha})`;
+        ctx.fillRect(streamX, streamY, 8, 2);
+      }
+    }
+  }
+  
+  // Get default ESP32 info
+  private getDefaultESP32Info(): ESP32Info {
+    return {
+      chipModel: 'ESP32-WROOM-32',
+      connectivity: 'WiFi + Bluetooth',
+      frequency: '240MHz',
+      status: 'detected',
+      voltage: '3.3V',
+      temperature: '45°C'
+    };
   }
   
   // Lightweight AR detection and overlay function
@@ -189,24 +366,24 @@ class ARService {
       const arDetections = this.processDetections(detections);
       const overlays = this.createLightweightOverlays(arDetections);
       
-      // Calculate metrics
-      const metrics = this.calculateAssemblyMetrics(arDetections);
+      // Generate ESP32 info for each detection
+      const esp32Info = this.generateESP32Info(arDetections);
       
       // Determine effects
       const showcaseEffects = {
-        particles: metrics.qualityScore > 80,
+        particles: arDetections.length > 0,
         hologram: arDetections.length > 0,
-        certification: metrics.qualityScore === 100
+        dataStream: arDetections.length > 1 // Data streams when multiple ESP32s
       };
       
       // Draw lightweight AR effects
-      this.drawLightweightAR(ctx, arDetections, showcaseEffects);
+      this.drawLightweightAR(ctx, arDetections, esp32Info, showcaseEffects);
       
       return {
         detections: arDetections,
         overlays,
-        metrics,
-        isComplete: metrics.qualityScore === 100,
+        esp32Info,
+        isActive: arDetections.length > 0,
         showcaseEffects
       };
       
@@ -241,61 +418,43 @@ class ARService {
     }));
   }
   
-  // Calculate lightweight assembly metrics
-  private calculateAssemblyMetrics(detections: ARDetection[]): AssemblyMetrics {
-    const currentTime = Date.now();
-    const assemblyTime = (currentTime - this.assemblyStartTime) / 1000;
-    
-    const totalComponents = 2;
-    const detectedComponents = detections.length;
-    
-    let qualityScore = 0;
-    if (detectedComponents >= totalComponents) {
-      const avgConfidence = detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length;
-      qualityScore = Math.round(avgConfidence * 100);
-    }
-    
-    let certificationLevel: 'bronze' | 'silver' | 'gold' | 'platinum' = 'bronze';
-    if (qualityScore >= 95) certificationLevel = 'platinum';
-    else if (qualityScore >= 90) certificationLevel = 'gold';
-    else if (qualityScore >= 80) certificationLevel = 'silver';
-    
-    return {
-      totalComponents,
-      detectedComponents,
-      qualityScore,
-      assemblyTime,
-      certificationLevel,
-      timestamp: new Date().toISOString()
-    };
+  // Generate ESP32 info for each detection
+  private generateESP32Info(detections: ARDetection[]): ESP32Info[] {
+    return detections.map((_detection, index) => ({
+      chipModel: 'ESP32-WROOM-32',
+      connectivity: 'WiFi + BT',
+      frequency: '240MHz',
+      status: index === 0 ? 'active' : 'ready',
+      voltage: '3.3V',
+      temperature: `${42 + index * 3}°C`
+    }));
   }
   
-  // Generate AR certification report
-  generateCertificationReport(metrics: AssemblyMetrics): string {
+  // Set language for bilingual support
+  setLanguage(language: string): void {
+    this.currentLanguage = language;
+  }
+  
+  // Generate ESP32 AR analysis report
+  generateESP32Report(esp32Info: ESP32Info[]): string {
     return `
-🏆 AR ASSEMBLY CERTIFICATION REPORT
+🚀 ESP32 AR ANALYSIS REPORT
 ═══════════════════════════════════════
 
-📊 ASSEMBLY METRICS:
-• Components Detected: ${metrics.detectedComponents}/${metrics.totalComponents}
-• Quality Score: ${metrics.qualityScore}%
-• Assembly Time: ${metrics.assemblyTime.toFixed(1)}s
-• Certification Level: ${metrics.certificationLevel.toUpperCase()}
+📊 DETECTED COMPONENTS:
+• ESP32 Boards Found: ${esp32Info.length}
+• Model: ${esp32Info[0]?.chipModel || 'ESP32-WROOM-32'}
+• Connectivity: ${esp32Info[0]?.connectivity || 'WiFi + BT'}
+• Operating Frequency: ${esp32Info[0]?.frequency || '240MHz'}
 
-🔍 ADVANCED AR ANALYSIS:
-• 3D Model Alignment: ✅ PERFECT
-• Holographic Overlay: ✅ ACTIVE
+🔍 AR TECHNOLOGY FEATURES:
+• Holographic Info Cards: ✅ ACTIVE
+• Bilingual Display: ✅ EN/AR
 • Real-time Tracking: ✅ STABLE
-• Particle Effects: ✅ ENABLED
+• Data Streams: ✅ ANIMATED
 
-🎯 TECHNOLOGY SHOWCASE:
-• Computer Vision: ✅ OPERATIONAL
-• 3D Rendering: ✅ HIGH QUALITY
-• AR Integration: ✅ PROFESSIONAL
-• Object Tracking: ✅ PRECISE
-
-📅 Certified: ${new Date(metrics.timestamp).toLocaleString()}
-🚀 AR Technology: SUCCESSFULLY DEMONSTRATED
+📅 Analysis: ${new Date().toLocaleString()}
+🎯 AR Showcase: SUCCESSFULLY DEMONSTRATED
     `;
   }
   

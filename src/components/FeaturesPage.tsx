@@ -419,11 +419,11 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const arAnalysis = await arService.detectAndOverlay(canvas, video, esp32Analysis.detections);
       
       setArShowcaseAnalysis(arAnalysis);
-      setDetectionCount(esp32Analysis.detections.length); // Keep ESP32 count for metrics
+      setDetectionCount(esp32Analysis.detections.length); // Keep ESP32 count
 
       console.log('🚀 AR Showcase updated:', {
         detections: arAnalysis.detections.length,
-        qualityScore: arAnalysis.metrics.qualityScore,
+        esp32Count: arAnalysis.esp32Info.length,
         effects: arAnalysis.showcaseEffects
       });
 
@@ -752,27 +752,22 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                
                {currentStep === 4 && arShowcaseAnalysis && (
                  <div className="ar-showcase-status">
-                   <span className={`detection-count-badge ar-quality-${arShowcaseAnalysis.metrics.certificationLevel}`}>
-                     <span className="ar-icon">🚀</span>
+                   <span className="detection-count-badge ar-esp32-info">
+                     <span className="ar-icon">📡</span>
                      <span className="count-label">
-                       {t('assembly.arShowcase.qualityScore', { score: arShowcaseAnalysis.metrics.qualityScore })}
+                       {t('assembly.arShowcase.esp32Detected', { count: arShowcaseAnalysis.esp32Info.length })}
                      </span>
                    </span>
-                   <span className={`detection-count-badge ar-certification-${arShowcaseAnalysis.metrics.certificationLevel}`}>
-                     <span className="certification-icon">
-                       {arShowcaseAnalysis.metrics.certificationLevel === 'platinum' && '🏆'}
-                       {arShowcaseAnalysis.metrics.certificationLevel === 'gold' && '🥇'}
-                       {arShowcaseAnalysis.metrics.certificationLevel === 'silver' && '🥈'}
-                       {arShowcaseAnalysis.metrics.certificationLevel === 'bronze' && '🥉'}
+                   {arShowcaseAnalysis.showcaseEffects.hologram && (
+                     <span className="detection-count-badge ar-hologram">
+                       <span className="hologram-icon">🎯</span>
+                       <span className="count-label">{t('assembly.arShowcase.hologramActive')}</span>
                      </span>
-                     <span className="count-label">
-                       {t(`assembly.arShowcase.certification.${arShowcaseAnalysis.metrics.certificationLevel}`)}
-                     </span>
-                   </span>
-                   {arShowcaseAnalysis.showcaseEffects.particles && (
-                     <span className="detection-count-badge ar-effects">
-                       <span className="effects-icon">✨</span>
-                       <span className="count-label">{t('assembly.arShowcase.effects.active')}</span>
+                   )}
+                   {arShowcaseAnalysis.showcaseEffects.dataStream && (
+                     <span className="detection-count-badge ar-datastream">
+                       <span className="stream-icon">⚡</span>
+                       <span className="count-label">{t('assembly.arShowcase.dataStreamActive')}</span>
                      </span>
                    )}
                  </div>
@@ -792,7 +787,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                  const step1Complete = detectionCount >= 2;
                  const step2Complete = motorWireAnalysis?.isFullyConnected || false;
                  const step3Complete = wristStrapAnalysis?.isWearingStrap || false;
-                 const step4Complete = arShowcaseAnalysis?.isComplete || false;
+                 const step4Complete = arShowcaseAnalysis?.isActive || false;
                  
                  const isCompleted = 
                    (step.id === 1 && step1Complete) ||
@@ -883,22 +878,15 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                        {isStep4 && isCurrent && (
                          <div className="step-status">
                            {arShowcaseAnalysis ? (
-                             arShowcaseAnalysis.isComplete ? (
+                             arShowcaseAnalysis.isActive ? (
                                <span className="status-success">
-                                 🏆 {t('assembly.status.arShowcaseComplete', { 
-                                   certification: t(`assembly.arShowcase.certification.${arShowcaseAnalysis.metrics.certificationLevel}`)
-                                 })}
-                               </span>
-                             ) : arShowcaseAnalysis.metrics.qualityScore > 0 ? (
-                               <span className="status-warning">
-                                 🚀 {t('assembly.status.arShowcaseProgress', { 
-                                   score: arShowcaseAnalysis.metrics.qualityScore,
-                                   time: arShowcaseAnalysis.metrics.assemblyTime.toFixed(1)
+                                 🚀 {t('assembly.status.arShowcaseActive', { 
+                                   count: arShowcaseAnalysis.esp32Info.length
                                  })}
                                </span>
                              ) : (
                                <span className="status-pending">
-                                 🔍 {t('assembly.status.initializingAR')}
+                                 🔍 {t('assembly.status.scanningESP32')}
                                </span>
                              )
                            ) : (
@@ -986,24 +974,26 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {currentStep === 4 && arShowcaseAnalysis && (
                  <div className="ar-showcase-controls">
                    <button 
-                     className={`btn ${arShowcaseAnalysis.isComplete ? 'btn-success' : 'btn-primary'}`}
+                     className={`btn ${arShowcaseAnalysis.isActive ? 'btn-success' : 'btn-primary'}`}
                      onClick={() => {
-                       if (arShowcaseAnalysis.isComplete) {
-                         // Generate and display certification report
-                         const report = arService.generateCertificationReport(arShowcaseAnalysis.metrics);
+                       if (arShowcaseAnalysis.isActive) {
+                         // Set language for bilingual report
+                         arService.setLanguage(t('assembly.steps.step1.title') === 'ESP32 Board Detection' ? 'en' : 'ar');
+                         // Generate and display ESP32 AR report
+                         const report = arService.generateESP32Report(arShowcaseAnalysis.esp32Info);
                          alert(report);
                        }
                      }}
-                     disabled={!arShowcaseAnalysis.isComplete}
+                     disabled={!arShowcaseAnalysis.isActive}
                    >
-                     {arShowcaseAnalysis.isComplete ? (
-                       <>🏆 {t('assembly.arShowcase.generateCertificate')}</>
+                     {arShowcaseAnalysis.isActive ? (
+                       <>📊 {t('assembly.arShowcase.generateReport')}</>
                      ) : (
-                       <>⏳ {t('assembly.arShowcase.awaitingCompletion')}</>
+                       <>⏳ {t('assembly.arShowcase.waitingForDetection')}</>
                      )}
                    </button>
                    
-                   {arShowcaseAnalysis.isComplete && (
+                   {arShowcaseAnalysis.isActive && (
                      <button 
                        className="btn btn-gradient"
                        onClick={() => {

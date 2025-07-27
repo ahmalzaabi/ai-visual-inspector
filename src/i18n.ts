@@ -62,20 +62,13 @@ const resources = {
           notDetected: "No Anti-Static Strap"
         },
         arShowcase: {
-          qualityScore: "Quality: {score}%",
+          esp32Detected: "{count} ESP32 AR Detected",
+          hologramActive: "Holographic Display",
+          dataStreamActive: "Data Streams Active",
           startShowcase: "Start AR Showcase",
-          generateCertificate: "Generate Certificate",
-          awaitingCompletion: "Awaiting Completion",
-          newDemonstration: "New Demonstration",
-          certification: {
-            bronze: "Bronze Certification",
-            silver: "Silver Certification", 
-            gold: "Gold Certification",
-            platinum: "Platinum Certification"
-          },
-          effects: {
-            active: "AR Effects Active"
-          }
+          generateReport: "Generate AR Report",
+          waitingForDetection: "Waiting for ESP32",
+          newDemonstration: "New Demonstration"
         },
         steps: {
           step1: {
@@ -112,8 +105,8 @@ const resources = {
           noWristStrap: "Please put on blue anti-static wrist strap",
           checkingWristStrap: "Checking for anti-static strap...",
           detectingWristStrap: "Detecting anti-static wrist strap...",
-          arShowcaseComplete: "AR Showcase Complete! {certification}",
-          arShowcaseProgress: "AR Analysis: {score}% ({time}s)",
+          arShowcaseActive: "AR Showcase Active! {count} ESP32 Detected",
+          scanningESP32: "Scanning for ESP32 boards...",
           initializingAR: "Initializing AR Technology...",
           loadingARShowcase: "Loading AR Showcase...",
           manualStep: "Manual step - Click \"Next\" when complete",
@@ -273,20 +266,13 @@ const resources = {
           notDetected: "لا يوجد سوار مضاد للكهرباء الساكنة"
         },
         arShowcase: {
-          qualityScore: "الجودة: {score}%",
+          esp32Detected: "تم اكتشاف {count} ESP32 بالواقع المعزز",
+          hologramActive: "العرض الهولوغرافي",
+          dataStreamActive: "تدفق البيانات نشط",
           startShowcase: "بدء عرض الواقع المعزز",
-          generateCertificate: "إنشاء الشهادة",
-          awaitingCompletion: "في انتظار الاكتمال",
-          newDemonstration: "عرض جديد",
-          certification: {
-            bronze: "شهادة برونزية",
-            silver: "شهادة فضية",
-            gold: "شهادة ذهبية",
-            platinum: "شهادة بلاتينية"
-          },
-          effects: {
-            active: "تأثيرات الواقع المعزز نشطة"
-          }
+          generateReport: "إنشاء تقرير الواقع المعزز",
+          waitingForDetection: "في انتظار اكتشاف ESP32",
+          newDemonstration: "عرض جديد"
         },
         steps: {
           step1: {
@@ -323,8 +309,8 @@ const resources = {
           noWristStrap: "يرجى ارتداء السوار الأزرق المضاد للكهرباء الساكنة",
           checkingWristStrap: "جاري فحص السوار المضاد للكهرباء الساكنة...",
           detectingWristStrap: "جاري اكتشاف السوار المضاد للكهرباء الساكنة...",
-          arShowcaseComplete: "اكتمل عرض الواقع المعزز! {certification}",
-          arShowcaseProgress: "تحليل الواقع المعزز: {score}% ({time}ث)",
+          arShowcaseActive: "عرض الواقع المعزز نشط! تم اكتشاف {count} ESP32",
+          scanningESP32: "جاري البحث عن لوحات ESP32...",
           initializingAR: "جاري تهيئة تقنية الواقع المعزز...",
           loadingARShowcase: "جاري تحميل عرض الواقع المعزز...",
           manualStep: "خطوة يدوية - اضغط \"التالي\" عند الانتهاء",
