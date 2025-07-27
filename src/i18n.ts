@@ -78,7 +78,7 @@ const resources = {
           },
           step2: {
             title: "Connect Motor Wires",
-            description: "Connect motor wires to ESP32 boards",
+            description: "Connect motor wires to chips",
             requirement: "All motor wires connected"
           },
           step3: {

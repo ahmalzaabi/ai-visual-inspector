@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="btn btn-primary" 
                 onClick={this.handleRetry}
               >
-                🔄 Try Again
+                <span className="icon-loading"></span> Try Again
               </button>
               <button 
                 className="btn btn-secondary" 

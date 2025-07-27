@@ -59,7 +59,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       description: t('assembly.steps.step4.description'),
       requirement: t('assembly.steps.step4.requirement'),
       requiredCount: 2,
-      icon: "✅"
+                  icon: "check"
     }
   ];
 
@@ -843,7 +843,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                          <div className="step-status">
                            {detectionCount >= step.requiredCount ? (
                              <span className="status-success">
-                               ✅ {t('assembly.status.step1Complete', { count: detectionCount })}
+                               <span className="icon-check"></span> {t('assembly.status.step1Complete', { count: detectionCount })}
                              </span>
                            ) : (
                              <span className="status-warning">
@@ -859,7 +859,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                            {motorWireAnalysis ? (
                              motorWireAnalysis.isFullyConnected ? (
                                <span className="status-success">
-                                 ✅ {t('assembly.status.step2Complete', { connected: motorWireAnalysis.connectedCount })}
+                                 <span className="icon-check"></span> {t('assembly.status.step2Complete', { connected: motorWireAnalysis.connectedCount })}
                                </span>
                              ) : motorWireAnalysis.totalConnections > 0 ? (
                                <span className="status-warning">
@@ -886,7 +886,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                            {wristStrapAnalysis ? (
                              wristStrapAnalysis.isWearingStrap ? (
                                <span className="status-success">
-                                 ✅ {t('assembly.status.step3Complete')}
+                                 <span className="icon-check"></span> {t('assembly.status.step3Complete')}
                                </span>
                              ) : wristStrapAnalysis.status === 'checking' ? (
                                <span className="status-warning">
@@ -1015,10 +1015,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                              disabled={!arShowcaseAnalysis.isActive}
                            >
                              {arShowcaseAnalysis.isActive ? (
-                               <><span className="icon">📊</span> {t('assembly.arShowcase.generateReport')}</>
-                             ) : (
-                               <><span className="icon">⏳</span> {t('assembly.arShowcase.waitingForDetection')}</>
-                             )}
+                                               <><span className="icon-report"></span> {t('assembly.arShowcase.generateReport')}</>
+              ) : (
+                <><span className="icon-loading"></span> {t('assembly.arShowcase.waitingForDetection')}</>
+              )}
                            </button>
                          </div>
                        )}
