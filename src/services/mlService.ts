@@ -265,7 +265,7 @@ class MLService {
     const outputShape = predictions.shape;
     console.log('📊 Model output shape:', outputShape);
     
-    const confidenceThreshold = 0.5;
+    const confidenceThreshold = 0.7; // Increased from 0.5 to reduce ESP32 false positives
     const iouThreshold = 0.4;
     
     // Dynamic input size based on device (iPhone uses 416, desktop uses 640)
@@ -573,7 +573,7 @@ class MLService {
     const outputShape = predictions.shape;
     console.log('📊 Motor Wire Model output shape:', outputShape);
     
-    const confidenceThreshold = 0.5;
+    const confidenceThreshold = 0.6; // Motor wire detection optimized threshold
     const iouThreshold = 0.4;
     const inputSize = 416;
     

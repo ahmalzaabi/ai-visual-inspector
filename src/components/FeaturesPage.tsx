@@ -247,10 +247,34 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
     setIsDetecting(false);
     
+    // Enhanced canvas clearing for iPhone PWA - remove all tracking boxes
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
-      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      if (ctx) {
+        // Clear entire canvas
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        
+        // Reset canvas state for next detection
+        ctx.save();
+        ctx.restore();
+        
+        // Force canvas refresh on iPhone
+        const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                        (window.navigator as any).standalone === true;
+        if (isIOSPWA) {
+          // Force repaint by slightly adjusting canvas size
+          const currentWidth = canvasRef.current.width;
+          canvasRef.current.width = currentWidth + 1;
+          canvasRef.current.width = currentWidth;
+        }
+      }
     }
+    
+    // Reset detection states
+    setDetectionCount(0);
+    setMotorWireAnalysis(null);
+    setWristStrapAnalysis(null);
+    setArShowcaseAnalysis(null);
   };
 
 
@@ -419,15 +443,34 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       ctx.lineTo(x + width, y + height - cornerSize);
       ctx.stroke();
       
-      // Label with app theme styling
+      // Label with app theme styling - FIXED positioning to stay within canvas bounds
       const label = `ESP32 ${(confidence * 100).toFixed(0)}%`;
       ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       const labelMetrics = ctx.measureText(label);
       const labelWidth = labelMetrics.width + 12;
       const labelHeight = 24;
       
-      const labelX = x;
-      const labelY = y > labelHeight ? y - labelHeight : y + height;
+      // Smart label positioning - ensure it stays within canvas bounds
+      const canvasWidth = ctx.canvas.width;
+      const canvasHeight = ctx.canvas.height;
+      
+      let labelX = x;
+      let labelY = y > labelHeight ? y - labelHeight : y + height;
+      
+      // Prevent label from going off right edge
+      if (labelX + labelWidth > canvasWidth) {
+        labelX = canvasWidth - labelWidth - 5;
+      }
+      
+      // Prevent label from going off bottom edge
+      if (labelY + labelHeight > canvasHeight) {
+        labelY = y - labelHeight - 5;
+      }
+      
+      // Final fallback - place inside box if still off screen
+      if (labelY < 0) {
+        labelY = y + 5;
+      }
       
       // Label background - matching app's dark theme
       ctx.fillStyle = 'rgba(26, 29, 41, 0.9)';
@@ -633,8 +676,18 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         console.log('📐 Canvas resized to:', video.videoWidth, 'x', video.videoHeight);
       }
 
-      // Clear previous drawings
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Clear previous drawings (optimized for iPhone)
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
+      
+      if (isIOSPWA) {
+        // iPhone optimization: Only clear if we had detections before
+        if (detectionCount > 0) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
 
       // Run ESP32 detection
       const analysis = await mlService.detectESP32(canvas, video);
@@ -659,10 +712,17 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                     (window.navigator as any).standalone === true;
     
-    // iPhone PWA frame skipping for performance
-    if (isIOSPWA && avgInferenceTime > 200 && frameSkipCount < 2) {
+    // iPhone PWA intelligent frame skipping for performance
+    if (isIOSPWA && avgInferenceTime > 150 && frameSkipCount < 2) {
       setFrameSkipCount(prev => prev + 1);
       console.log(`⏭️ Frame skip ${frameSkipCount + 1}/2 - iPhone performance optimization`);
+      return;
+    }
+    
+    // Extra iPhone optimization: Skip frames if device is struggling
+    if (isIOSPWA && avgInferenceTime > 300) {
+      console.log('📱 iPhone struggling - increasing frame skip for stability');
+      setFrameSkipCount(prev => prev + 1);
       return;
     }
     
