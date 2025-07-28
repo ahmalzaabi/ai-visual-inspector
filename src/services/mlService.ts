@@ -76,6 +76,30 @@ class MLService {
     console.log('🚀 Initializing TensorFlow.js...');
     
     try {
+      // iPhone PWA specific optimizations
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
+      
+      if (isIOSPWA) {
+        console.log('📱 Detected iPhone PWA - applying iOS optimizations...');
+        
+        // Critical iPhone WebGL optimizations
+        tf.env().set('WEBGL_VERSION', 2);
+        tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+        tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
+        tf.env().set('WEBGL_RENDER_FLOAT32_CAPABLE', false);
+        tf.env().set('WEBGL_FLUSH_THRESHOLD', 1);
+        tf.env().set('WEBGL_SIZE_UPLOAD_UNIFORM', 4);
+        tf.env().set('WEBGL_MAX_TEXTURE_SIZE', 4096);
+        tf.env().set('WEBGL_PACK_NORMALIZATION', true);
+        tf.env().set('WEBGL_PACK_CLIP', true);
+        tf.env().set('WEBGL_PACK_DEPTHWISECONV', true);
+        tf.env().set('WEBGL_CONV_IM2COL', true);
+        tf.env().set('WEBGL_CONV_IM2COL_MAX_WIDTH', 32);
+        tf.env().set('WEBGL_LAZILY_UNPACK', true);
+        tf.env().set('WEBGL_DOWNLOAD_FLOAT_ENABLED', false);
+      }
+      
       await tf.ready();
       
       // Set backend based on device capabilities
@@ -89,6 +113,11 @@ class MLService {
       
       this.isInitialized = true;
       console.log('✅ TensorFlow.js ready, backend:', tf.getBackend());
+      
+      // Memory cleanup for iPhone
+      if (isIOSPWA) {
+        this.startMemoryMonitoring();
+      }
       
     } catch (error) {
       console.error('❌ TensorFlow.js initialization failed:', error);
@@ -174,9 +203,16 @@ class MLService {
       // Parse ESP32 output
       const analysis = await this.parseESP32Output(predictions, imageWidth, imageHeight, canvasWidth, canvasHeight);
 
-      // Cleanup
+      // Aggressive cleanup for iPhone PWA
       inputTensor.dispose();
       predictions.dispose();
+      
+      // Force garbage collection on iPhone
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
+      if (isIOSPWA) {
+        tf.disposeVariables(); // Cleanup orphaned tensors
+      }
 
       return analysis;
 
@@ -191,17 +227,22 @@ class MLService {
     }
   }
   
-  // Image preprocessing
+  // Image preprocessing (optimized for iPhone PWA)
   private preprocessImage(imageElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement): tf.Tensor4D {
     return tf.tidy(() => {
       // Convert image to tensor
       let tensor = tf.browser.fromPixels(imageElement);
       
-      // Resize to model input size (640x640)
-      tensor = tf.image.resizeBilinear(tensor, [640, 640]);
+      // iPhone PWA optimization: Use smaller resolution if performance is poor
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
+      const targetSize = isIOSPWA ? 416 : 640; // Smaller resolution for iPhone
       
-      // Normalize to [0, 1]
-      tensor = tensor.div(255.0);
+      // Resize to model input size
+      tensor = tf.image.resizeBilinear(tensor, [targetSize, targetSize]);
+      
+      // Normalize to [0, 1] using more efficient method
+      tensor = tf.mul(tensor, tf.scalar(1/255));
       
       // Add batch dimension
       const tensor4d = tensor.expandDims(0);
@@ -226,7 +267,11 @@ class MLService {
     
     const confidenceThreshold = 0.5;
     const iouThreshold = 0.4;
-    const inputSize = 640;
+    
+    // Dynamic input size based on device (iPhone uses 416, desktop uses 640)
+    const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                    (window.navigator as any).standalone === true;
+    const inputSize = isIOSPWA ? 416 : 640;
     
     let numDetections: number, numFeatures: number;
     
@@ -468,9 +513,16 @@ class MLService {
       // Parse motor wire output
       const analysis = await this.parseMotorWireOutput(predictions, imageWidth, imageHeight, canvasWidth, canvasHeight);
 
-      // Cleanup
+      // Aggressive cleanup for iPhone PWA
       inputTensor.dispose();
       predictions.dispose();
+      
+      // Force garbage collection on iPhone
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
+      if (isIOSPWA) {
+        tf.disposeVariables(); // Cleanup orphaned tensors
+      }
 
       return analysis;
 
@@ -918,6 +970,26 @@ class MLService {
     console.log(`✅ Successfully switched to ${modelType} model`);
   }
 
+  // iPhone PWA memory monitoring for aggressive cleanup
+  private memoryMonitorInterval: NodeJS.Timeout | null = null;
+  
+  private startMemoryMonitoring(): void {
+    if (this.memoryMonitorInterval) return;
+    
+    this.memoryMonitorInterval = setInterval(() => {
+      const memInfo = tf.memory();
+      const memoryMB = memInfo.numBytes / (1024 * 1024);
+      
+      // Aggressive cleanup on iPhone if memory > 120MB
+      if (memoryMB > 120) {
+        console.log(`🧹 iPhone memory cleanup triggered: ${memoryMB.toFixed(1)}MB`);
+        tf.disposeVariables();
+        tf.engine().startScope();
+        tf.engine().endScope();
+      }
+    }, 3000); // Check every 3 seconds
+  }
+
   // Cleanup
   dispose(): void {
     if (this.esp32Model) {
@@ -930,6 +1002,10 @@ class MLService {
     }
     if (this.handsModel) {
       this.handsModel = null;
+    }
+    if (this.memoryMonitorInterval) {
+      clearInterval(this.memoryMonitorInterval);
+      this.memoryMonitorInterval = null;
     }
     this.currentActiveModel = null;
     this.isInitialized = false;

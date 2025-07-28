@@ -93,6 +93,11 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  
+  // iPhone PWA performance optimization states
+  const [frameSkipCount, setFrameSkipCount] = useState(0);
+  const [avgInferenceTime, setAvgInferenceTime] = useState(0);
+  const performanceBuffer = useRef<number[]>([]);
 
   // Assembly steps configuration
   const assemblySteps = [
@@ -616,12 +621,17 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         return;
       }
 
-      // CRITICAL: Ensure canvas dimensions match video exactly
+      // OPTIMIZED: Only resize canvas if dimensions actually changed
       const videoRect = video.getBoundingClientRect();
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.style.width = videoRect.width + 'px';
-      canvas.style.height = videoRect.height + 'px';
+      const needsResize = canvas.width !== video.videoWidth || canvas.height !== video.videoHeight;
+      
+      if (needsResize) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.style.width = videoRect.width + 'px';
+        canvas.style.height = videoRect.height + 'px';
+        console.log('📐 Canvas resized to:', video.videoWidth, 'x', video.videoHeight);
+      }
 
       // Clear previous drawings
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -646,14 +656,46 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
   // Combined detection function that calls appropriate detector based on current step
   const performDetection = async () => {
-    if (currentStep === 1) {
-      await performESP32Detection();
-    } else if (currentStep === 2) {
-      await performMotorWireDetection();
-    } else if (currentStep === 3) {
-      await performWristStrapDetection();
-    } else if (currentStep === 4) {
-      await performARShowcase();
+    const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                    (window.navigator as any).standalone === true;
+    
+    // iPhone PWA frame skipping for performance
+    if (isIOSPWA && avgInferenceTime > 200 && frameSkipCount < 2) {
+      setFrameSkipCount(prev => prev + 1);
+      console.log(`⏭️ Frame skip ${frameSkipCount + 1}/2 - iPhone performance optimization`);
+      return;
+    }
+    
+    // Reset frame skip counter
+    setFrameSkipCount(0);
+    
+    const startTime = performance.now();
+    
+    try {
+      if (currentStep === 1) {
+        await performESP32Detection();
+      } else if (currentStep === 2) {
+        await performMotorWireDetection();
+      } else if (currentStep === 3) {
+        await performWristStrapDetection();
+      } else if (currentStep === 4) {
+        await performARShowcase();
+      }
+      
+      // Track inference performance for adaptive optimization
+      const inferenceTime = performance.now() - startTime;
+      
+      // Update rolling average (keep last 10 measurements)
+      performanceBuffer.current.push(inferenceTime);
+      if (performanceBuffer.current.length > 10) {
+        performanceBuffer.current.shift();
+      }
+      
+      const newAvg = performanceBuffer.current.reduce((a, b) => a + b, 0) / performanceBuffer.current.length;
+      setAvgInferenceTime(newAvg);
+      
+    } catch (error) {
+      console.error('❌ Detection failed:', error);
     }
   };
 
@@ -692,8 +734,14 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
       setIsDetecting(true);
       
-      // Start detection loop at 4 FPS for optimal balance of performance and smoothness
-      const detectionInterval = 250;
+      // OPTIMIZED: Adaptive detection interval based on device capabilities
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
+      
+      // More aggressive interval throttling for iPhone PWA performance
+      const detectionInterval = isIOSPWA ? 500 : 250; // 2 FPS on iPhone, 4 FPS on desktop
+      console.log(`📱 Detection interval: ${detectionInterval}ms (${1000/detectionInterval} FPS)`);
+      
       detectionIntervalRef.current = setInterval(performDetection, detectionInterval);
       
       // Run first detection immediately

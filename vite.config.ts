@@ -100,8 +100,8 @@ export default defineConfig({
         }
       }
     },
-    // Optimize chunk size
-    chunkSizeWarningLimit: 1000
+    // Optimize chunk size - AI/ML apps need larger chunks
+    chunkSizeWarningLimit: 2000
   },
   // Performance optimizations
   optimizeDeps: {
