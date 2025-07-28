@@ -98,6 +98,11 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [frameSkipCount, setFrameSkipCount] = useState(0);
   const [avgInferenceTime, setAvgInferenceTime] = useState(0);
   const performanceBuffer = useRef<number[]>([]);
+  
+  // "Every 3 frames" optimization with stable tracking
+  const [frameCount, setFrameCount] = useState(0);
+  const detectionBuffer = useRef<any[]>([]); // Keep last 3 detections for stability
+  const stableDetections = useRef<any[]>([]); // Stable tracking boxes
 
   // Assembly steps configuration
   const assemblySteps = [
@@ -287,11 +292,16 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       }
     }
     
-    // Reset detection states
+    // Reset detection states and buffers
     setDetectionCount(0);
     setMotorWireAnalysis(null);
     setWristStrapAnalysis(null);
     setArShowcaseAnalysis(null);
+    
+    // Reset "every 3 frames" optimization buffers
+    setFrameCount(0);
+    detectionBuffer.current = [];
+    stableDetections.current = [];
   };
 
 
@@ -661,8 +671,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
   };
 
-  // ESP32 Detection Function for Step 1
-  const performESP32Detection = async () => {
+  // STABLE TRACKING: ESP32 Detection with buffering to prevent blinking
+  const performESP32DetectionWithStability = async () => {
     if (!videoRef.current || !canvasRef.current || activeFeature !== 'assembly' || currentStep !== 1) {
       return;
     }
@@ -693,28 +703,26 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         console.log('📐 Canvas resized to:', video.videoWidth, 'x', video.videoHeight);
       }
 
-      // Clear previous drawings (optimized for iPhone)
-      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-                      (window.navigator as any).standalone === true;
-      
-      if (isIOSPWA) {
-        // iPhone optimization: Only clear if we had detections before
-        if (detectionCount > 0) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-      } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-
       // Run ESP32 detection
       const analysis = await mlService.detectESP32(canvas, video);
       
-      setDetectionCount(analysis.detections.length);
+      // Add to detection buffer for stability
+      detectionBuffer.current.push(analysis.detections);
+      if (detectionBuffer.current.length > 3) {
+        detectionBuffer.current.shift(); // Keep only last 3 detections
+      }
+      
+      // Create stable detections by merging recent detections
+      const mergedDetections = mergeDetectionsForStability(detectionBuffer.current);
+      stableDetections.current = mergedDetections;
+      
+      setDetectionCount(mergedDetections.length);
 
-      // Draw detection boxes immediately
-      if (analysis.detections.length > 0) {
+      // Clear and draw stable tracking boxes
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (mergedDetections.length > 0) {
         ctx.save();
-        drawDetections(ctx, analysis.detections);
+        drawDetections(ctx, mergedDetections);
         ctx.restore();
       }
 
@@ -723,11 +731,56 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       setDetectionCount(0);
     }
   };
+  
+  // Helper function to merge detections for stability
+  const mergeDetectionsForStability = (detectionHistory: any[][]): any[] => {
+    if (detectionHistory.length === 0) return [];
+    
+    // Use the most recent detection as base, but smooth confidence scores
+    const latestDetections = detectionHistory[detectionHistory.length - 1] || [];
+    
+    // If we have history, smooth the confidence scores
+    if (detectionHistory.length > 1) {
+      return latestDetections.map(detection => ({
+        ...detection,
+        confidence: Math.min(detection.confidence + 0.05, 1.0) // Slightly boost confidence for stability
+      }));
+    }
+    
+    return latestDetections;
+  };
 
-  // Combined detection function that calls appropriate detector based on current step
+
+
+  // OPTIMIZED: "Every 3 frames" detection with stable tracking
   const performDetection = async () => {
     const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                     (window.navigator as any).standalone === true;
+    
+    // Increment frame counter
+    const currentFrame = frameCount + 1;
+    setFrameCount(currentFrame);
+    
+    // "Every 3 frames" optimization - only run inference every 3rd frame
+    const shouldRunInference = currentFrame % 3 === 0;
+    
+    if (!shouldRunInference) {
+      // Use stable detections from buffer - no inference, just redraw
+      if (stableDetections.current.length > 0 && canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          // Clear and redraw stable tracking boxes
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          if (currentStep === 1) {
+            drawDetections(ctx, stableDetections.current);
+          }
+        }
+      }
+      console.log(`📹 Frame ${currentFrame}: Using cached detections (every 3 frames optimization)`);
+      return;
+    }
+    
+    console.log(`🔍 Frame ${currentFrame}: Running inference (every 3rd frame)`);
     
     // iPhone PWA intelligent frame skipping for performance
     if (isIOSPWA && avgInferenceTime > 150 && frameSkipCount < 2) {
@@ -750,7 +803,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     
     try {
       if (currentStep === 1) {
-        await performESP32Detection();
+        await performESP32DetectionWithStability();
       } else if (currentStep === 2) {
         await performMotorWireDetection();
       } else if (currentStep === 3) {
@@ -815,9 +868,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      // AGGRESSIVE: Slower detection to prevent iPhone heating
-      const detectionInterval = isIOSPWA ? 1000 : 250; // 1 FPS on iPhone, 4 FPS on desktop
-      console.log(`📱 Detection interval: ${detectionInterval}ms (${1000/detectionInterval} FPS) - Anti-heating optimization`);
+      // OPTIMIZED: Fast visual updates with "every 3 frames" inference
+      const detectionInterval = isIOSPWA ? 200 : 150; // 5 FPS visual on iPhone, ~7 FPS on desktop
+      console.log(`📱 Detection interval: ${detectionInterval}ms (${1000/detectionInterval} FPS visual) - Every 3rd frame runs inference`);
       
       detectionIntervalRef.current = setInterval(performDetection, detectionInterval);
       

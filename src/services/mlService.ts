@@ -102,15 +102,37 @@ class MLService {
       
       await tf.ready();
       
-      // Set backend based on device capabilities - Enhanced PWA handling
-      try {
-        await tf.setBackend('webgl');
-        console.log('✅ Using WebGL backend for GPU acceleration');
-      } catch (webglError) {
-        console.warn('⚠️ WebGL failed, falling back to CPU:', webglError);
+      // Set backend based on device capabilities - WebGPU > WebGL > CPU
+      let backendSet = false;
+      
+      // Try WebGPU first (fastest for modern devices)
+      if (!backendSet) {
+        try {
+          await tf.setBackend('webgpu');
+          console.log('🚀 Using WebGPU backend - Maximum performance!');
+          backendSet = true;
+        } catch (webgpuError) {
+          console.log('⚠️ WebGPU not available, trying WebGL...');
+        }
+      }
+      
+      // Try WebGL as fallback
+      if (!backendSet) {
+        try {
+          await tf.setBackend('webgl');
+          console.log('✅ Using WebGL backend for GPU acceleration');
+          backendSet = true;
+        } catch (webglError) {
+          console.warn('⚠️ WebGL failed, falling back to CPU:', webglError);
+        }
+      }
+      
+      // CPU as final fallback
+      if (!backendSet) {
         await tf.setBackend('cpu');
+        console.log('📱 Using CPU backend');
         
-        // iPhone PWA specific: If WebGL fails, use more conservative settings
+        // iPhone PWA specific: If GPU backends fail, use conservative settings
         if (isIOSPWA) {
           console.log('📱 iPhone PWA using CPU backend - applying conservative settings');
           tf.env().set('CPU_HANDOFF_SIZE_THRESHOLD', 512); // Smaller threshold for iPhone
@@ -140,10 +162,35 @@ class MLService {
     try {
       await this.initializeTensorFlow();
 
-      const modelUrl = '/models/esp32/model.json';
-      console.log('📥 Loading model from:', modelUrl);
+      // PWA-specific model loading with absolute URL
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
       
-      this.esp32Model = await tf.loadGraphModel(modelUrl);
+      const baseUrl = isIOSPWA ? window.location.origin : '';
+      const modelUrl = `${baseUrl}/models/esp32/model.json`;
+      console.log('📥 Loading model from:', modelUrl, isIOSPWA ? '(PWA mode)' : '(Browser mode)');
+      
+      // PWA: Add cache-busting and explicit headers
+      const loadOptions: any = {};
+      if (isIOSPWA) {
+        loadOptions.fetchFunc = async (url: string, options: any) => {
+          console.log('📱 PWA custom fetch for model:', url);
+          const response = await fetch(url, {
+            ...options,
+            cache: 'no-cache', // Bypass service worker cache
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          if (!response.ok) {
+            throw new Error(`PWA model fetch failed: ${response.status} ${response.statusText}`);
+          }
+          return response;
+        };
+      }
+      
+      this.esp32Model = await tf.loadGraphModel(modelUrl, loadOptions);
       console.log('✅ ESP32 Model loaded successfully');
       
       // Get model info
@@ -452,10 +499,31 @@ class MLService {
     try {
       await this.initializeTensorFlow();
 
-      const modelUrl = '/models/motor_wire_model_web/model.json';
-      console.log('📥 Loading motor wire model from:', modelUrl);
+      // PWA-specific model loading with absolute URL
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
       
-      this.motorWireModel = await tf.loadGraphModel(modelUrl);
+      const baseUrl = isIOSPWA ? window.location.origin : '';
+      const modelUrl = `${baseUrl}/models/motor_wire_model_web/model.json`;
+      console.log('📥 Loading motor wire model from:', modelUrl, isIOSPWA ? '(PWA mode)' : '(Browser mode)');
+      
+      // PWA: Add cache-busting
+      const loadOptions: any = {};
+      if (isIOSPWA) {
+        loadOptions.fetchFunc = async (url: string, options: any) => {
+          const response = await fetch(url, {
+            ...options,
+            cache: 'no-cache',
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+          });
+          if (!response.ok) {
+            throw new Error(`PWA motor wire model fetch failed: ${response.status}`);
+          }
+          return response;
+        };
+      }
+      
+      this.motorWireModel = await tf.loadGraphModel(modelUrl, loadOptions);
       console.log('✅ Motor Wire Model loaded successfully');
       
       // Get model info
