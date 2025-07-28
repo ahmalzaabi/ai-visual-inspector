@@ -76,16 +76,12 @@ class MLService {
     console.log('🚀 Initializing TensorFlow.js...');
     
     try {
-      // FORCE IDENTICAL TENSORFLOW INITIALIZATION (PWA = Safari)
-      const wasIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+      // SAFARI-IDENTICAL TENSORFLOW INITIALIZATION (PWA + Safari)
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      if (wasIOSPWA) {
-        console.log('🔄 PWA DETECTED: Forcing Safari-identical TensorFlow.js setup...');
-        
-        // Override PWA mode for TensorFlow.js initialization
-        (window.navigator as any).standalone = false;
-        console.log('🎯 TensorFlow.js: PWA now thinks it\'s Safari browser');
+      if (isIOSPWA) {
+        console.log('🔄 PWA DETECTED: Using Safari-identical TensorFlow.js setup...');
       }
       
       // Use Safari browser settings for ALL iOS devices (no PWA differences)
@@ -143,7 +139,7 @@ class MLService {
         console.log('📱 Using CPU backend');
         
         // iPhone PWA specific: If GPU backends fail, use conservative settings
-        if (wasIOSPWA) {
+        if (isIOSPWA) {
           console.log('📱 iPhone PWA using CPU backend - applying conservative settings');
           tf.env().set('CPU_HANDOFF_SIZE_THRESHOLD', 512); // Smaller threshold for iPhone
         }
@@ -153,7 +149,7 @@ class MLService {
       console.log('✅ TensorFlow.js ready, backend:', tf.getBackend());
       
       // Memory cleanup for iPhone
-      if (wasIOSPWA) {
+      if (isIOSPWA) {
         this.startMemoryMonitoring();
       }
       
@@ -173,26 +169,19 @@ class MLService {
       await this.initializeTensorFlow();
 
       // Enhanced model loading for PWA and regular browsers
-      // FORCE PWA TO BEHAVE LIKE SAFARI BROWSER
+      // SAFARI-IDENTICAL MODEL LOADING (PWA + Safari)
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
       if (isIOSPWA) {
-        console.log('🔄 PWA DETECTED: Forcing Safari-like behavior...');
-        
-        // Override PWA mode to behave like Safari browser
-        (window.navigator as any).standalone = false;
-        console.log('🎯 PWA Override: Set standalone = false (Safari mode)');
-        
-        // Force browser-like model loading
-        console.log('🌐 PWA: Using browser-identical model loading...');
+        console.log('📱 PWA MODE: Using Safari-identical model loading strategy...');
       }
       
-      // Use IDENTICAL loading strategy as Safari browser (no PWA differences)
+      // Use IDENTICAL loading strategy for both PWA and Safari
       const modelUrl = '/models/esp32/model.json';
-      console.log('🚀 SAFARI-IDENTICAL MODEL LOADING:', modelUrl);
+      console.log('🚀 LOADING ESP32 MODEL (PWA=Safari strategy):', modelUrl);
       
-      // Load exactly like Safari browser (no special PWA handling)
+      // Load with Safari-identical approach (no PWA-specific handling)
       this.esp32Model = await tf.loadGraphModel(modelUrl);
       console.log('✅ ESP32 Model loaded successfully');
       
@@ -503,26 +492,19 @@ class MLService {
       await this.initializeTensorFlow();
 
       // Enhanced model loading for PWA and regular browsers
-      // FORCE PWA TO BEHAVE LIKE SAFARI BROWSER (same as ESP32)
+      // SAFARI-IDENTICAL MODEL LOADING (PWA + Safari) - same as ESP32
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
       if (isIOSPWA) {
-        console.log('🔄 PWA DETECTED (Motor Wire): Forcing Safari-like behavior...');
-        
-        // Override PWA mode to behave like Safari browser
-        (window.navigator as any).standalone = false;
-        console.log('🎯 PWA Override (Motor Wire): Set standalone = false (Safari mode)');
-        
-        // Force browser-like model loading
-        console.log('🌐 PWA (Motor Wire): Using browser-identical model loading...');
+        console.log('📱 PWA MODE (Motor Wire): Using Safari-identical model loading strategy...');
       }
       
-      // Use IDENTICAL loading strategy as Safari browser (no PWA differences)
+      // Use IDENTICAL loading strategy for both PWA and Safari
       const modelUrl = '/models/motor_wire_model_web/model.json';
-      console.log('🚀 SAFARI-IDENTICAL MOTOR WIRE MODEL LOADING:', modelUrl);
+      console.log('🚀 LOADING MOTOR WIRE MODEL (PWA=Safari strategy):', modelUrl);
       
-      // Load exactly like Safari browser (no special PWA handling)
+      // Load with Safari-identical approach (no PWA-specific handling)
       this.motorWireModel = await tf.loadGraphModel(modelUrl);
       console.log('✅ Motor Wire Model loaded successfully');
       
