@@ -7,12 +7,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // DISABLE SERVICE WORKER COMPLETELY - Like MediaPipe (online-only, faster)
+      disable: false, // Keep PWA features for installability
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'AI Visual Inspector',
         short_name: 'AI Inspector',
-        description: 'AI-powered visual inspection application with camera access',
+        description: '🌐 Online AI Visual Inspector - Fast like MediaPipe (Internet Required)',
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',
@@ -20,6 +22,7 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         categories: ['productivity', 'utilities'],
+        prefer_related_applications: false,
         icons: [
           {
             src: 'icons/icon-192.png',
@@ -39,40 +42,19 @@ export default defineConfig({
           }
         ]
       },
+      // COMPLETELY REMOVE SERVICE WORKER - NO OFFLINE FUNCTIONALITY
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB for AR models
+        // Empty service worker - no caching, no offline features
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallback: null,
-        // Exclude camera-related files AND model files from caching/interception
-        navigateFallbackDenylist: [/^\/(camera|stream)/, /^\/models\//],
-        // Don't precache model files - let them be fetched directly
-        globIgnores: ['**/models/**/*'],
-        runtimeCaching: [
-          {
-            // Exclude model files from general HTTPS caching - let them bypass service worker
-            urlPattern: ({url}) => {
-              return url.protocol === 'https:' && !url.pathname.includes('/models/');
-            },
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'https-calls',
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          // REMOVED: ML model caching - models now bypass service worker completely
-        ],
+        globPatterns: [], // Don't cache anything
+        runtimeCaching: [], // No runtime caching
+        navigationPreload: false,
+        // Generate minimal service worker that does nothing
+        mode: 'production'
       },
       devOptions: {
-        enabled: false // Disable service worker in development to avoid conflicts
+        enabled: false
       }
     })
   ],

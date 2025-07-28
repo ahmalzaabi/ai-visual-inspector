@@ -16,6 +16,11 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
         <LanguageSwitcher />
       </div>
 
+      {/* Online-Only Mode Banner */}
+      <div className="online-only-banner">
+        🌐 Online-Only Mode Active (Like Google MediaPipe) - Faster & More Reliable!
+      </div>
+
       {/* Main Content with Title */}
       <div className="main-content-centered">
         <h1 className="main-hero-title">{t('title')}</h1>
