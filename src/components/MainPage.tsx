@@ -82,27 +82,10 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
             <div className="card-glow-effect"></div>
             <div className="nav-card-content">
               <div className="card-icon missions-icon">
-                <div className="inspection-symbol">
-                  <div className="pcb-board">
-                    <div className="esp32-chip"></div>
-                  </div>
-                  <div className="pcb-pins">
-                    <div className="pin pin-1"></div>
-                    <div className="pin pin-2"></div>
-                    <div className="pin pin-3"></div>
-                    <div className="pin pin-4"></div>
-                    <div className="pin pin-5"></div>
-                    <div className="pin pin-6"></div>
-                  </div>
-                  <div className="circuit-traces">
-                    <div className="trace trace-h1"></div>
-                    <div className="trace trace-h2"></div>
-                    <div className="trace trace-v1"></div>
-                    <div className="trace trace-v2"></div>
-                  </div>
-                  <div className="inspection-beam"></div>
-                  <div className="detection-indicator"></div>
-                </div>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <rect x="4" y="4" width="24" height="24" rx="4" stroke="var(--accent-primary)" strokeWidth="2" fill="rgba(0, 122, 255, 0.1)"/>
+                  <path d="M10 16l4 4 8-8" stroke="var(--accent-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
               <h3 className="nav-card-title">{t('main.navigation.missions')}</h3>
               <div className="card-tech-pattern">
@@ -113,32 +96,22 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
           </div>
 
           <div 
-            className="vertical-nav-card admin-card ai-card"
+            className="vertical-nav-card analytics-card ai-card"
             onClick={() => onNavigate('admin')}
           >
             <div className="card-glow-effect"></div>
             <div className="nav-card-content">
-              <div className="card-icon admin-icon">
-                <div className="admin-symbol">
-                  <div className="dashboard-frame">
-                    <div className="dashboard-screen"></div>
-                  </div>
-                  <div className="chart-bars">
-                    <div className="bar bar-1"></div>
-                    <div className="bar bar-2"></div>
-                    <div className="bar bar-3"></div>
-                    <div className="bar bar-4"></div>
-                  </div>
-                  <div className="trend-line"></div>
-                  <div className="data-points">
-                    <div className="data-point dp-1"></div>
-                    <div className="data-point dp-2"></div>
-                    <div className="data-point dp-3"></div>
-                  </div>
-                  <div className="analytics-indicator"></div>
-                </div>
+              <div className="card-icon analytics-icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <path d="M4 28L4 4" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M4 28L28 28" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round"/>
+                  <rect x="7" y="20" width="3" height="8" fill="var(--accent-primary)" rx="1"/>
+                  <rect x="12" y="16" width="3" height="12" fill="var(--accent-primary)" rx="1"/>
+                  <rect x="17" y="12" width="3" height="16" fill="var(--accent-primary)" rx="1"/>
+                  <rect x="22" y="18" width="3" height="10" fill="var(--accent-primary)" rx="1"/>
+                </svg>
               </div>
-              <h3 className="nav-card-title">{t('main.navigation.admin')}</h3>
+              <h3 className="nav-card-title">{t('main.navigation.analytics')}</h3>
               <div className="card-tech-pattern">
                 <div className="tech-line t-1"></div>
                 <div className="tech-line t-2"></div>

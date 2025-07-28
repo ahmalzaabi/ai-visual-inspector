@@ -10,7 +10,7 @@ const resources = {
       main: {
         navigation: {
           missions: "Missions",
-          admin: "Admin Panel"
+          analytics: "Analytics"
         }
       },
       
@@ -33,7 +33,7 @@ const resources = {
       
       navigation: {
         missions: "Missions",
-        admin: "Admin Panel"
+        analytics: "Analytics"
       },
       
       common: {
@@ -139,7 +139,7 @@ const resources = {
       main: {
         navigation: {
           missions: "المهام",
-          admin: "لوحة الإدارة"
+          analytics: "التحليلات"
         }
       },
       
@@ -162,7 +162,7 @@ const resources = {
       
       navigation: {
         missions: "المهام",
-        admin: "لوحة الإدارة"
+        analytics: "التحليلات"
       },
       
       common: {
