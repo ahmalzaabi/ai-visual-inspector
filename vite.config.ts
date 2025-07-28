@@ -63,15 +63,16 @@ export default defineConfig({
               },
             },
           },
-          // Future ML model caching strategy
+          // ML model loading strategy - NetworkFirst for PWA reliability
           {
-            urlPattern: /\.(?:tflite|onnx|bin|json|pb)$/,
-            handler: 'CacheFirst',
+            urlPattern: /\/models\/.*\.(json|bin)$/,
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'ml-models',
+              networkTimeoutSeconds: 10, // Longer timeout for model files
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+                maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days (shorter than before)
               },
               cacheableResponse: {
                 statuses: [0, 200],

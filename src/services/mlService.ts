@@ -170,22 +170,48 @@ class MLService {
       const loadOptions: any = {};
       
       if (isIOSPWA) {
-        // PWA: Use absolute URL and cache-busting
-        modelUrl = `${window.location.origin}/models/esp32/model.json`;
+        // PWA: Use absolute URL and aggressive cache-busting + timestamp
+        const timestamp = Date.now();
+        modelUrl = `${window.location.origin}/models/esp32/model.json?t=${timestamp}`;
         loadOptions.fetchFunc = async (url: string, options: any) => {
           console.log('📱 PWA custom fetch for model:', url);
-          const response = await fetch(url, {
-            ...options,
-            cache: 'no-cache',
-            headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
+          
+          // Try multiple strategies to bypass service worker
+          try {
+            const response = await fetch(url, {
+              ...options,
+              cache: 'no-store', // More aggressive than no-cache
+              mode: 'cors',
+              credentials: 'omit',
+              headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`PWA model fetch failed: ${response.status} ${response.statusText}`);
             }
-          });
-          if (!response.ok) {
-            throw new Error(`PWA model fetch failed: ${response.status} ${response.statusText}`);
+            
+            console.log('✅ PWA model fetch successful');
+            return response;
+          } catch (error) {
+            console.error('❌ PWA model fetch failed, trying fallback:', error);
+            
+            // Fallback: try without timestamp
+            const fallbackUrl = url.split('?')[0];
+            const fallbackResponse = await fetch(fallbackUrl, {
+              cache: 'reload',
+              mode: 'cors'
+            });
+            
+            if (!fallbackResponse.ok) {
+              throw new Error(`PWA fallback fetch failed: ${fallbackResponse.status}`);
+            }
+            
+            return fallbackResponse;
           }
-          return response;
         };
       }
       
@@ -508,18 +534,44 @@ class MLService {
       const loadOptions: any = {};
       
       if (isIOSPWA) {
-        // PWA: Use absolute URL and cache-busting
-        modelUrl = `${window.location.origin}/models/motor_wire_model_web/model.json`;
+        // PWA: Use absolute URL and aggressive cache-busting + timestamp
+        const timestamp = Date.now();
+        modelUrl = `${window.location.origin}/models/motor_wire_model_web/model.json?t=${timestamp}`;
         loadOptions.fetchFunc = async (url: string, options: any) => {
-          const response = await fetch(url, {
-            ...options,
-            cache: 'no-cache',
-            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-          });
-          if (!response.ok) {
-            throw new Error(`PWA motor wire model fetch failed: ${response.status}`);
+          try {
+            const response = await fetch(url, {
+              ...options,
+              cache: 'no-store',
+              mode: 'cors',
+              credentials: 'omit',
+              headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`PWA motor wire model fetch failed: ${response.status}`);
+            }
+            
+            return response;
+          } catch (error) {
+            console.error('❌ PWA motor wire model fetch failed, trying fallback:', error);
+            
+            // Fallback: try without timestamp
+            const fallbackUrl = url.split('?')[0];
+            const fallbackResponse = await fetch(fallbackUrl, {
+              cache: 'reload',
+              mode: 'cors'
+            });
+            
+            if (!fallbackResponse.ok) {
+              throw new Error(`PWA motor wire fallback fetch failed: ${fallbackResponse.status}`);
+            }
+            
+            return fallbackResponse;
           }
-          return response;
         };
       }
       
