@@ -237,29 +237,48 @@ class MLService {
       // PWA-SAFE: Always use canvas as source for consistent behavior
       let sourceElement: HTMLCanvasElement | HTMLVideoElement;
       
-      if (isIOSPWA) {
-        // PWA MODE: Force use canvas for consistent pixel access
-        console.log('📱 PWA MODE: Using canvas as source for consistent pixel access');
-        
-                 // Draw video frame to canvas first (if video available)
+             if (isIOSPWA) {
+         // PWA MODE: Create separate processing canvas to avoid interfering with UI canvas
+         console.log('📱 PWA MODE: Creating separate processing canvas for consistent pixel access');
+         
          if (videoElement && videoElement.readyState && videoElement.readyState >= 2) {
-           const ctx = canvas.getContext('2d');
+           // Create temporary canvas for processing only
+           const processingCanvas = document.createElement('canvas');
+           const ctx = processingCanvas.getContext('2d');
            if (ctx) {
-             canvas.width = videoElement.videoWidth || 640;
-             canvas.height = videoElement.videoHeight || 480;
-             ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-             console.log('📱 PWA: Drew video frame to canvas', `${canvas.width}x${canvas.height}`);
+             processingCanvas.width = videoElement.videoWidth || 640;
+             processingCanvas.height = videoElement.videoHeight || 480;
+             ctx.drawImage(videoElement, 0, 0, processingCanvas.width, processingCanvas.height);
+             console.log('📱 PWA: Created processing canvas', `${processingCanvas.width}x${processingCanvas.height}`);
+             sourceElement = processingCanvas;
+           } else {
+             console.log('📱 PWA: Fallback to video element (no canvas context)');
+             sourceElement = videoElement;
            }
+         } else {
+           console.log('📱 PWA: Using original canvas (no video available)');
+           sourceElement = canvas;
          }
-        sourceElement = canvas;
-      } else {
-        // SAFARI MODE: Use video directly if available
-        sourceElement = videoElement && videoElement.readyState >= 2 ? videoElement : canvas;
-        console.log('🌐 SAFARI MODE: Using', sourceElement === videoElement ? 'video' : 'canvas', 'as source');
-      }
+       } else {
+         // SAFARI MODE: Use video directly if available
+         sourceElement = videoElement && videoElement.readyState >= 2 ? videoElement : canvas;
+         console.log('🌐 SAFARI MODE: Using', sourceElement === videoElement ? 'video' : 'canvas', 'as source');
+       }
       
-      const imageWidth = sourceElement === videoElement ? videoElement.videoWidth : canvas.width;
-      const imageHeight = sourceElement === videoElement ? videoElement.videoHeight : canvas.height;
+             // Calculate dimensions based on source element type
+       let imageWidth: number, imageHeight: number;
+       if (sourceElement === videoElement) {
+         imageWidth = videoElement.videoWidth || canvas.width;
+         imageHeight = videoElement.videoHeight || canvas.height;
+       } else if (sourceElement !== canvas) {
+         // Processing canvas case (PWA mode)
+         imageWidth = sourceElement.width;
+         imageHeight = sourceElement.height;
+       } else {
+         // Original canvas case
+         imageWidth = canvas.width;
+         imageHeight = canvas.height;
+       }
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       

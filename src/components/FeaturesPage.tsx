@@ -823,16 +823,16 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     
     console.log(`🔍 Frame ${currentFrame}: Running inference (every 3rd frame)`);
     
-    // iPhone PWA intelligent frame skipping for performance
-    if (isIOSPWA && avgInferenceTime > 150 && frameSkipCount < 2) {
+    // iPhone PWA intelligent frame skipping for smooth performance
+    if (isIOSPWA && avgInferenceTime > 200 && frameSkipCount < 2) {
       setFrameSkipCount(prev => prev + 1);
-      console.log(`⏭️ Frame skip ${frameSkipCount + 1}/2 - iPhone performance optimization`);
+      console.log(`⏭️ Frame skip ${frameSkipCount + 1}/2 - iPhone PWA smooth performance`);
       return;
     }
     
-    // Extra iPhone optimization: Skip frames if device is struggling
-    if (isIOSPWA && avgInferenceTime > 300) {
-      console.log('📱 iPhone struggling - increasing frame skip for stability');
+    // Extra iPhone optimization: Skip frames if device is struggling (less aggressive now)
+    if (isIOSPWA && avgInferenceTime > 400) {
+      console.log('📱 iPhone PWA struggling - increasing frame skip for stability');
       setFrameSkipCount(prev => prev + 1);
       return;
     }
@@ -909,9 +909,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      // OPTIMIZED: Fast visual updates with "every 3 frames" inference
-      const detectionInterval = isIOSPWA ? 200 : 150; // 5 FPS visual on iPhone, ~7 FPS on desktop
-      console.log(`📱 Detection interval: ${detectionInterval}ms (${1000/detectionInterval} FPS visual) - Every 3rd frame runs inference`);
+      // OPTIMIZED: Smooth visual updates with "every 3 frames" inference
+      const detectionInterval = isIOSPWA ? 250 : 150; // 4 FPS visual on iPhone PWA, ~7 FPS on desktop
+      console.log(`📱 Detection interval: ${detectionInterval}ms (${(1000/detectionInterval).toFixed(1)} FPS visual) - Every 3rd frame runs inference`);
       
       detectionIntervalRef.current = setInterval(performDetection, detectionInterval);
       
