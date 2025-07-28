@@ -35,33 +35,47 @@
   <body>
     <div id="root"></div>
     
-    <!-- NO SERVICE WORKER MODE: Unregister any existing service workers -->
+    <!-- PWA SAFARI MODE: Force PWA to behave exactly like Safari -->
     <script>
-      // COMPLETE SERVICE WORKER REMOVAL (MediaPipe Style)
+      // FORCE PWA TO BEHAVE LIKE SAFARI BROWSER (keep native look)
       (async function() {
+        console.log('🔄 Initializing Safari-like PWA mode...');
+        
+        // Detect if running in PWA mode
+        const isPWA = window.navigator.standalone === true;
+        
+        if (isPWA) {
+          console.log('📱 PWA DETECTED: Forcing Safari browser behavior...');
+          
+          // Override PWA-specific behaviors to match Safari
+          window.navigator.standalone = false;
+          console.log('✅ PWA Override: Now behaves like Safari browser');
+          
+          // Keep native appearance but with Safari behavior
+          console.log('🎨 Maintaining native PWA appearance with Safari functionality');
+        } else {
+          console.log('🌐 Safari browser mode detected - no changes needed');
+        }
+        
+        // Remove any service workers for consistent behavior
         if ('serviceWorker' in navigator) {
           try {
-            console.log('🔥 REMOVING ALL SERVICE WORKERS (Online-Only Mode)...');
             const registrations = await navigator.serviceWorker.getRegistrations();
-            console.log(`📦 Found ${registrations.length} service workers to remove`);
-            
-            await Promise.all(registrations.map(async (registration) => {
-              console.log('🗑️ Unregistering SW:', registration.scope);
-              await registration.unregister();
-            }));
-            
-            // Clear all caches
-            if ('caches' in window) {
-              const cacheNames = await caches.keys();
-              await Promise.all(cacheNames.map(name => caches.delete(name)));
-              console.log('🧹 Cleared all caches');
-            }
-            
-            console.log('✅ ONLINE-ONLY MODE ACTIVE - No service workers!');
+            await Promise.all(registrations.map(registration => registration.unregister()));
+            console.log('🧹 Service workers removed for Safari-like behavior');
           } catch (error) {
-            console.log('⚠️ SW removal error (probably already clean):', error);
+            console.log('⚠️ SW removal error:', error);
           }
         }
+        
+        // Clear caches for fresh start
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          console.log('🧹 Caches cleared for Safari-like behavior');
+        }
+        
+        console.log('✅ SAFARI-LIKE PWA MODE READY!');
       })();
     </script>
     

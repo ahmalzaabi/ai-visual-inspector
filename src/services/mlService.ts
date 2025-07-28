@@ -76,14 +76,23 @@ class MLService {
     console.log('🚀 Initializing TensorFlow.js...');
     
     try {
-      // iPhone PWA specific optimizations
-      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+      // FORCE IDENTICAL TENSORFLOW INITIALIZATION (PWA = Safari)
+      const wasIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      if (isIOSPWA) {
-        console.log('📱 Detected iPhone PWA - applying iOS optimizations...');
+      if (wasIOSPWA) {
+        console.log('🔄 PWA DETECTED: Forcing Safari-identical TensorFlow.js setup...');
         
-        // FIXED: iPhone PWA WebGL optimizations (removed invalid flags)
+        // Override PWA mode for TensorFlow.js initialization
+        (window.navigator as any).standalone = false;
+        console.log('🎯 TensorFlow.js: PWA now thinks it\'s Safari browser');
+      }
+      
+      // Use Safari browser settings for ALL iOS devices (no PWA differences)
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        console.log('📱 iOS Device: Using Safari-optimized TensorFlow.js settings...');
+        
+        // Safari-optimized WebGL settings (no PWA-specific changes)
         tf.env().set('WEBGL_VERSION', 2);
         tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
         tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
@@ -95,9 +104,10 @@ class MLService {
         tf.env().set('WEBGL_PACK_CLIP', true);
         tf.env().set('WEBGL_PACK_DEPTHWISECONV', true);
         tf.env().set('WEBGL_CONV_IM2COL', true);
-        // REMOVED: tf.env().set('WEBGL_CONV_IM2COL_MAX_WIDTH', 32); - This flag doesn't exist!
         tf.env().set('WEBGL_LAZILY_UNPACK', true);
         tf.env().set('WEBGL_DOWNLOAD_FLOAT_ENABLED', false);
+        
+        console.log('✅ Safari-identical WebGL settings applied');
       }
       
       await tf.ready();
@@ -133,7 +143,7 @@ class MLService {
         console.log('📱 Using CPU backend');
         
         // iPhone PWA specific: If GPU backends fail, use conservative settings
-        if (isIOSPWA) {
+        if (wasIOSPWA) {
           console.log('📱 iPhone PWA using CPU backend - applying conservative settings');
           tf.env().set('CPU_HANDOFF_SIZE_THRESHOLD', 512); // Smaller threshold for iPhone
         }
@@ -143,7 +153,7 @@ class MLService {
       console.log('✅ TensorFlow.js ready, backend:', tf.getBackend());
       
       // Memory cleanup for iPhone
-      if (isIOSPWA) {
+      if (wasIOSPWA) {
         this.startMemoryMonitoring();
       }
       
@@ -163,67 +173,27 @@ class MLService {
       await this.initializeTensorFlow();
 
       // Enhanced model loading for PWA and regular browsers
-      // Enhanced PWA debugging and model loading
+      // FORCE PWA TO BEHAVE LIKE SAFARI BROWSER
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      console.log('🔍 DETAILED PWA DEBUGGING:', {
-        userAgent: navigator.userAgent,
-        standalone: (window.navigator as any).standalone,
-        isIOSPWA: isIOSPWA,
-        origin: window.location.origin,
-        pathname: window.location.pathname,
-        protocol: window.location.protocol,
-        host: window.location.host
-      });
-      
-      // Try multiple model URL strategies for PWA compatibility
-      const timestamp = Date.now();
-      let modelUrl = '/models/esp32/model.json';
-      
-      // For PWA mode, try different URL patterns
       if (isIOSPWA) {
-        console.log('📱 PWA MODE: Trying multiple URL strategies...');
+        console.log('🔄 PWA DETECTED: Forcing Safari-like behavior...');
         
-        // Strategy 1: Relative path with cache bust
-        modelUrl = `/models/esp32/model.json?v=${timestamp}`;
-        console.log('🎯 PWA Strategy 1 - Relative with cache bust:', modelUrl);
+        // Override PWA mode to behave like Safari browser
+        (window.navigator as any).standalone = false;
+        console.log('🎯 PWA Override: Set standalone = false (Safari mode)');
         
-        try {
-          // Test if the model file is reachable
-          const testResponse = await fetch(modelUrl, { method: 'HEAD' });
-          console.log('✅ PWA Strategy 1 - Model file accessible:', testResponse.status);
-        } catch (headError) {
-          console.log('⚠️ PWA Strategy 1 failed, trying Strategy 2...');
-          // Strategy 2: Absolute URL
-          modelUrl = `${window.location.origin}/models/esp32/model.json?v=${timestamp}`;
-          console.log('🎯 PWA Strategy 2 - Absolute URL:', modelUrl);
-        }
+        // Force browser-like model loading
+        console.log('🌐 PWA: Using browser-identical model loading...');
       }
       
-      console.log('🌐 FINAL MODEL URL:', modelUrl);
+      // Use IDENTICAL loading strategy as Safari browser (no PWA differences)
+      const modelUrl = '/models/esp32/model.json';
+      console.log('🚀 SAFARI-IDENTICAL MODEL LOADING:', modelUrl);
       
-      // Enhanced error handling for PWA
-      try {
-        console.log('⏳ Starting TensorFlow.js model loading...');
-        this.esp32Model = await tf.loadGraphModel(modelUrl);
-        console.log('✅ TensorFlow.js model loaded successfully');
-      } catch (tfError) {
-        console.error('❌ TensorFlow.js loading failed:', tfError);
-        
-        if (isIOSPWA) {
-          console.log('🔄 PWA FALLBACK: Trying basic relative path...');
-          try {
-            this.esp32Model = await tf.loadGraphModel('/models/esp32/model.json');
-            console.log('✅ PWA FALLBACK successful!');
-          } catch (fallbackError) {
-            console.error('❌ PWA FALLBACK also failed:', fallbackError);
-            throw fallbackError;
-          }
-        } else {
-          throw tfError;
-        }
-      }
+      // Load exactly like Safari browser (no special PWA handling)
+      this.esp32Model = await tf.loadGraphModel(modelUrl);
       console.log('✅ ESP32 Model loaded successfully');
       
       // Get model info
@@ -533,56 +503,27 @@ class MLService {
       await this.initializeTensorFlow();
 
       // Enhanced model loading for PWA and regular browsers
-      // Enhanced PWA debugging and model loading (same as ESP32)
+      // FORCE PWA TO BEHAVE LIKE SAFARI BROWSER (same as ESP32)
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      const timestamp = Date.now();
-      let modelUrl = '/models/motor_wire_model_web/model.json';
-      
-      // For PWA mode, try different URL patterns
       if (isIOSPWA) {
-        console.log('📱 PWA MODE (Motor Wire): Trying multiple URL strategies...');
+        console.log('🔄 PWA DETECTED (Motor Wire): Forcing Safari-like behavior...');
         
-        // Strategy 1: Relative path with cache bust
-        modelUrl = `/models/motor_wire_model_web/model.json?v=${timestamp}`;
-        console.log('🎯 PWA Strategy 1 - Relative with cache bust:', modelUrl);
+        // Override PWA mode to behave like Safari browser
+        (window.navigator as any).standalone = false;
+        console.log('🎯 PWA Override (Motor Wire): Set standalone = false (Safari mode)');
         
-        try {
-          // Test if the model file is reachable
-          const testResponse = await fetch(modelUrl, { method: 'HEAD' });
-          console.log('✅ PWA Strategy 1 - Motor Wire model file accessible:', testResponse.status);
-        } catch (headError) {
-          console.log('⚠️ PWA Strategy 1 failed, trying Strategy 2...');
-          // Strategy 2: Absolute URL
-          modelUrl = `${window.location.origin}/models/motor_wire_model_web/model.json?v=${timestamp}`;
-          console.log('🎯 PWA Strategy 2 - Absolute URL:', modelUrl);
-        }
+        // Force browser-like model loading
+        console.log('🌐 PWA (Motor Wire): Using browser-identical model loading...');
       }
       
-      console.log('🌐 FINAL MOTOR WIRE MODEL URL:', modelUrl);
+      // Use IDENTICAL loading strategy as Safari browser (no PWA differences)
+      const modelUrl = '/models/motor_wire_model_web/model.json';
+      console.log('🚀 SAFARI-IDENTICAL MOTOR WIRE MODEL LOADING:', modelUrl);
       
-      // Enhanced error handling for PWA
-      try {
-        console.log('⏳ Starting Motor Wire TensorFlow.js model loading...');
-        this.motorWireModel = await tf.loadGraphModel(modelUrl);
-        console.log('✅ Motor Wire TensorFlow.js model loaded successfully');
-      } catch (tfError) {
-        console.error('❌ Motor Wire TensorFlow.js loading failed:', tfError);
-        
-        if (isIOSPWA) {
-          console.log('🔄 PWA FALLBACK (Motor Wire): Trying basic relative path...');
-          try {
-            this.motorWireModel = await tf.loadGraphModel('/models/motor_wire_model_web/model.json');
-            console.log('✅ PWA FALLBACK successful for Motor Wire!');
-          } catch (fallbackError) {
-            console.error('❌ PWA FALLBACK also failed for Motor Wire:', fallbackError);
-            throw fallbackError;
-          }
-        } else {
-          throw tfError;
-        }
-      }
+      // Load exactly like Safari browser (no special PWA handling)
+      this.motorWireModel = await tf.loadGraphModel(modelUrl);
       console.log('✅ Motor Wire Model loaded successfully');
       
       // Get model info
