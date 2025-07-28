@@ -104,9 +104,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const detectionBuffer = useRef<any[]>([]); // Keep last 3 detections for stability
   const stableDetections = useRef<any[]>([]); // Stable tracking boxes
   
-  // AR Detection stability (Step 4)
-  const arDetectionBuffer = useRef<any[]>([]); // Keep last 3 AR detections
-  const stableARDetections = useRef<any>(null); // Stable AR analysis
+  // AR Detection stability (Step 4) - simplified
+  const stableARDetections = useRef<any>(null); // Current AR analysis
 
   // Assembly steps configuration
   const assemblySteps = [
@@ -307,8 +306,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     detectionBuffer.current = [];
     stableDetections.current = [];
     
-    // Reset AR detection buffers
-    arDetectionBuffer.current = [];
+    // Reset AR detection state
     stableARDetections.current = null;
   };
 
@@ -567,12 +565,24 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         console.log('📐 AR Canvas resized to:', video.videoWidth, 'x', video.videoHeight);
       }
 
+      // CRITICAL: Clear canvas first to prevent AR duplication
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
       // Get ESP32 detections for AR overlay
       console.log('🔍 Running AR detection...');
       const esp32Analysis = await mlService.detectESP32(canvas, video);
       
-      // Run AR Technology Showcase
-      const arAnalysis = await arService.detectAndOverlay(canvas, video, esp32Analysis.detections);
+      // Add ESP32 detections to buffer for stability (but don't run AR yet)
+      detectionBuffer.current.push(esp32Analysis.detections);
+      if (detectionBuffer.current.length > 3) {
+        detectionBuffer.current.shift();
+      }
+      
+      // Get stable ESP32 detections
+      const stableESP32Detections = mergeDetectionsForStability(detectionBuffer.current);
+      
+      // Run AR Technology Showcase ONCE with stable detections
+      const arAnalysis = await arService.detectAndOverlay(canvas, video, stableESP32Detections);
       
       console.log('📊 AR analysis result:', {
         detections: arAnalysis.detections.length,
@@ -580,23 +590,12 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
         effects: arAnalysis.showcaseEffects
       });
       
-      // Add to AR detection buffer for stability
-      arDetectionBuffer.current.push(arAnalysis);
-      if (arDetectionBuffer.current.length > 3) {
-        arDetectionBuffer.current.shift(); // Keep only last 3 AR analyses
-      }
-      
-      // Create stable AR analysis by merging recent analyses
-      const stableARAnalysis = mergeARAnalysesForStability(arDetectionBuffer.current);
-      stableARDetections.current = stableARAnalysis;
-      
-      setArShowcaseAnalysis(stableARAnalysis);
-      setDetectionCount(esp32Analysis.detections.length); // Keep ESP32 count
+      // Store final AR analysis (no need for AR buffering - AR service handles its own stability)
+      stableARDetections.current = arAnalysis;
+      setArShowcaseAnalysis(arAnalysis);
+      setDetectionCount(stableESP32Detections.length);
 
-      console.log('📦 Stable AR analysis created:', {
-        stableDetections: stableARAnalysis.detections.length,
-        stableESP32Count: stableARAnalysis.esp32Info.length
-      });
+      console.log('✅ AR overlay drawn once with stable ESP32 detections');
 
     } catch (err) {
       console.error('❌ AR showcase failed:', err);
@@ -604,34 +603,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
   };
   
-  // Helper function to merge AR analyses for stability
-  const mergeARAnalysesForStability = (arHistory: any[]): any => {
-    if (arHistory.length === 0) return null;
-    
-    // Use the most recent AR analysis as base
-    const latestAR = arHistory[arHistory.length - 1];
-    
-    if (!latestAR) return null;
-    
-    // If we have history, enhance stability
-    if (arHistory.length > 1) {
-      return {
-        ...latestAR,
-        // Enhance detection confidence for stability
-        detections: latestAR.detections.map((detection: any) => ({
-          ...detection,
-          confidence: Math.min(detection.confidence + 0.03, 1.0)
-        })),
-        // Keep showcase effects stable
-        showcaseEffects: latestAR.showcaseEffects.map((effect: any) => ({
-          ...effect,
-          stability: 'enhanced'
-        }))
-      };
-    }
-    
-    return latestAR;
-  };
+
 
   // Wrist Strap Detection Function for Step 3
   const performWristStrapDetection = async () => {
@@ -839,9 +811,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             if (currentStep === 1 && stableDetections.current.length > 0) {
               // Redraw stable ESP32 detections
               drawDetections(ctx, stableDetections.current);
-            } else if (currentStep === 4 && stableARDetections.current) {
-              // AR step uses the stable analysis set in state - no manual redraw needed
-              console.log('📹 AR: Using stable AR analysis from buffer');
+            } else if (currentStep === 4) {
+              // AR step: Don't redraw cached frames - AR handles its own animations
+              console.log('📹 AR: Skipping cached frame - AR animations continue naturally');
             }
           }
         }
