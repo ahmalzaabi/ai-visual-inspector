@@ -63,29 +63,7 @@ interface FeaturesPageProps {
   onBack: () => void;
 }
 
-interface DetectionResults {
-  detectionCount: number;
-  motorWireAnalysis: {
-    connectedCount: number;
-    totalConnections: number;
-    isFullyConnected: boolean;
-  };
-  wristStrapAnalysis: {
-    isWearingStrap: boolean;
-    status: 'checking' | 'detected' | 'not_detected';
-  };
-  arShowcaseAnalysis: {
-    isActive: boolean;
-    esp32Info: Array<{
-      chipModel: string;
-      connectivity: string;
-      frequency: string;
-      status: 'active' | 'detected' | 'ready';
-      voltage: string;
-      temperature: string;
-    }>;
-  };
-}
+
 
 interface ReportData {
   title: string;
@@ -750,36 +728,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
     try {
       const report = arService.generateESP32Report(arShowcaseAnalysis.esp32Info);
-      setReportData({
-        title: 'ESP32 AR Report',
-        id: 'ar_report',
-        timestamp: new Date().toISOString(),
-        sections: [
-          {
-            title: 'ESP32 Detections',
-            data: [
-              { label: 'Total ESP32 Detected', value: arShowcaseAnalysis.esp32Info.length.toString() },
-              { label: 'Active ESP32', value: arShowcaseAnalysis.esp32Info.filter(info => info.status === 'active').length.toString() },
-              { label: 'Detected ESP32', value: arShowcaseAnalysis.esp32Info.filter(info => info.status === 'detected').length.toString() },
-              { label: 'Ready ESP32', value: arShowcaseAnalysis.esp32Info.filter(info => info.status === 'ready').length.toString() },
-            ]
-          },
-          {
-            title: 'Showcase Effects',
-            data: [
-              { label: 'Hologram Active', value: arShowcaseAnalysis.showcaseEffects.hologram ? 'Yes' : 'No' },
-              { label: 'Data Stream Active', value: arShowcaseAnalysis.showcaseEffects.dataStream ? 'Yes' : 'No' },
-            ]
-          },
-          {
-            title: 'ESP32 Details',
-            data: arShowcaseAnalysis.esp32Info.map(info => ({
-              label: `${info.chipModel} (${info.connectivity})`,
-              value: `${info.frequency}, Voltage: ${info.voltage}, Temp: ${info.temperature}`
-            }))
-          }
-        ]
-      });
+      setReportData(report);
       setShowReport(true);
       console.log('Report generated successfully.');
     } catch (err) {
