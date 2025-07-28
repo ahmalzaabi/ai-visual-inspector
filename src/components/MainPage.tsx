@@ -83,17 +83,25 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
             <div className="nav-card-content">
               <div className="card-icon missions-icon">
                 <div className="inspection-symbol">
-                  <div className="camera-lens">
-                    <div className="lens-center"></div>
-                    <div className="lens-ring"></div>
+                  <div className="pcb-board">
+                    <div className="esp32-chip"></div>
                   </div>
-                  <div className="detection-grid">
-                    <div className="grid-line h-1"></div>
-                    <div className="grid-line h-2"></div>
-                    <div className="grid-line v-1"></div>
-                    <div className="grid-line v-2"></div>
+                  <div className="pcb-pins">
+                    <div className="pin pin-1"></div>
+                    <div className="pin pin-2"></div>
+                    <div className="pin pin-3"></div>
+                    <div className="pin pin-4"></div>
+                    <div className="pin pin-5"></div>
+                    <div className="pin pin-6"></div>
                   </div>
-                  <div className="scan-overlay"></div>
+                  <div className="circuit-traces">
+                    <div className="trace trace-h1"></div>
+                    <div className="trace trace-h2"></div>
+                    <div className="trace trace-v1"></div>
+                    <div className="trace trace-v2"></div>
+                  </div>
+                  <div className="inspection-beam"></div>
+                  <div className="detection-indicator"></div>
                 </div>
               </div>
               <h3 className="nav-card-title">{t('main.navigation.missions')}</h3>
@@ -112,18 +120,22 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
             <div className="nav-card-content">
               <div className="card-icon admin-icon">
                 <div className="admin-symbol">
-                  <div className="gear-outer">
-                    <div className="gear-tooth gt-1"></div>
-                    <div className="gear-tooth gt-2"></div>
-                    <div className="gear-tooth gt-3"></div>
-                    <div className="gear-tooth gt-4"></div>
-                    <div className="gear-tooth gt-5"></div>
-                    <div className="gear-tooth gt-6"></div>
+                  <div className="dashboard-frame">
+                    <div className="dashboard-screen"></div>
                   </div>
-                  <div className="gear-inner">
-                    <div className="gear-center"></div>
+                  <div className="chart-bars">
+                    <div className="bar bar-1"></div>
+                    <div className="bar bar-2"></div>
+                    <div className="bar bar-3"></div>
+                    <div className="bar bar-4"></div>
                   </div>
-                  <div className="settings-indicator"></div>
+                  <div className="trend-line"></div>
+                  <div className="data-points">
+                    <div className="data-point dp-1"></div>
+                    <div className="data-point dp-2"></div>
+                    <div className="data-point dp-3"></div>
+                  </div>
+                  <div className="analytics-indicator"></div>
                 </div>
               </div>
               <h3 className="nav-card-title">{t('main.navigation.admin')}</h3>

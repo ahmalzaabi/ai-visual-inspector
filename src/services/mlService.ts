@@ -163,19 +163,67 @@ class MLService {
       await this.initializeTensorFlow();
 
       // Enhanced model loading for PWA and regular browsers
-      // Online-only loading - cache-busting for iPhone performance
+      // Enhanced PWA debugging and model loading
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
+      console.log('🔍 DETAILED PWA DEBUGGING:', {
+        userAgent: navigator.userAgent,
+        standalone: (window.navigator as any).standalone,
+        isIOSPWA: isIOSPWA,
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        protocol: window.location.protocol,
+        host: window.location.host
+      });
+      
+      // Try multiple model URL strategies for PWA compatibility
       const timestamp = Date.now();
-      const modelUrl = isIOSPWA 
-        ? `${window.location.origin}/models/esp32/model.json?t=${timestamp}` 
-        : '/models/esp32/model.json';
+      let modelUrl = '/models/esp32/model.json';
       
-      console.log('🌐 ONLINE-ONLY ESP32 MODEL LOADING from:', modelUrl);
+      // For PWA mode, try different URL patterns
+      if (isIOSPWA) {
+        console.log('📱 PWA MODE: Trying multiple URL strategies...');
+        
+        // Strategy 1: Relative path with cache bust
+        modelUrl = `/models/esp32/model.json?v=${timestamp}`;
+        console.log('🎯 PWA Strategy 1 - Relative with cache bust:', modelUrl);
+        
+        try {
+          // Test if the model file is reachable
+          const testResponse = await fetch(modelUrl, { method: 'HEAD' });
+          console.log('✅ PWA Strategy 1 - Model file accessible:', testResponse.status);
+        } catch (headError) {
+          console.log('⚠️ PWA Strategy 1 failed, trying Strategy 2...');
+          // Strategy 2: Absolute URL
+          modelUrl = `${window.location.origin}/models/esp32/model.json?v=${timestamp}`;
+          console.log('🎯 PWA Strategy 2 - Absolute URL:', modelUrl);
+        }
+      }
       
-      // SIMPLE LOADING - NO SERVICE WORKER INTERFERENCE (Like MediaPipe)
-      this.esp32Model = await tf.loadGraphModel(modelUrl);
+      console.log('🌐 FINAL MODEL URL:', modelUrl);
+      
+      // Enhanced error handling for PWA
+      try {
+        console.log('⏳ Starting TensorFlow.js model loading...');
+        this.esp32Model = await tf.loadGraphModel(modelUrl);
+        console.log('✅ TensorFlow.js model loaded successfully');
+      } catch (tfError) {
+        console.error('❌ TensorFlow.js loading failed:', tfError);
+        
+        if (isIOSPWA) {
+          console.log('🔄 PWA FALLBACK: Trying basic relative path...');
+          try {
+            this.esp32Model = await tf.loadGraphModel('/models/esp32/model.json');
+            console.log('✅ PWA FALLBACK successful!');
+          } catch (fallbackError) {
+            console.error('❌ PWA FALLBACK also failed:', fallbackError);
+            throw fallbackError;
+          }
+        } else {
+          throw tfError;
+        }
+      }
       console.log('✅ ESP32 Model loaded successfully');
       
       // Get model info
@@ -485,18 +533,56 @@ class MLService {
       await this.initializeTensorFlow();
 
       // Enhanced model loading for PWA and regular browsers
-      // Online-only loading - cache-busting for iPhone performance  
+      // Enhanced PWA debugging and model loading (same as ESP32)
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
       const timestamp = Date.now();
-      const modelUrl = isIOSPWA 
-        ? `${window.location.origin}/models/motor_wire_model_web/model.json?t=${timestamp}` 
-        : '/models/motor_wire_model_web/model.json';
+      let modelUrl = '/models/motor_wire_model_web/model.json';
       
-      console.log('🌐 ONLINE-ONLY MOTOR WIRE MODEL LOADING from:', modelUrl);
+      // For PWA mode, try different URL patterns
+      if (isIOSPWA) {
+        console.log('📱 PWA MODE (Motor Wire): Trying multiple URL strategies...');
+        
+        // Strategy 1: Relative path with cache bust
+        modelUrl = `/models/motor_wire_model_web/model.json?v=${timestamp}`;
+        console.log('🎯 PWA Strategy 1 - Relative with cache bust:', modelUrl);
+        
+        try {
+          // Test if the model file is reachable
+          const testResponse = await fetch(modelUrl, { method: 'HEAD' });
+          console.log('✅ PWA Strategy 1 - Motor Wire model file accessible:', testResponse.status);
+        } catch (headError) {
+          console.log('⚠️ PWA Strategy 1 failed, trying Strategy 2...');
+          // Strategy 2: Absolute URL
+          modelUrl = `${window.location.origin}/models/motor_wire_model_web/model.json?v=${timestamp}`;
+          console.log('🎯 PWA Strategy 2 - Absolute URL:', modelUrl);
+        }
+      }
       
-      this.motorWireModel = await tf.loadGraphModel(modelUrl);
+      console.log('🌐 FINAL MOTOR WIRE MODEL URL:', modelUrl);
+      
+      // Enhanced error handling for PWA
+      try {
+        console.log('⏳ Starting Motor Wire TensorFlow.js model loading...');
+        this.motorWireModel = await tf.loadGraphModel(modelUrl);
+        console.log('✅ Motor Wire TensorFlow.js model loaded successfully');
+      } catch (tfError) {
+        console.error('❌ Motor Wire TensorFlow.js loading failed:', tfError);
+        
+        if (isIOSPWA) {
+          console.log('🔄 PWA FALLBACK (Motor Wire): Trying basic relative path...');
+          try {
+            this.motorWireModel = await tf.loadGraphModel('/models/motor_wire_model_web/model.json');
+            console.log('✅ PWA FALLBACK successful for Motor Wire!');
+          } catch (fallbackError) {
+            console.error('❌ PWA FALLBACK also failed for Motor Wire:', fallbackError);
+            throw fallbackError;
+          }
+        } else {
+          throw tfError;
+        }
+      }
       console.log('✅ Motor Wire Model loaded successfully');
       
       // Get model info
