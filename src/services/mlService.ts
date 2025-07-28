@@ -170,23 +170,34 @@ class MLService {
       const loadOptions: any = {};
       
       if (isIOSPWA) {
-        // PWA: Use absolute URL and aggressive cache-busting + timestamp
+        // PWA: ULTRA-AGGRESSIVE bypass - multiple strategies
         const timestamp = Date.now();
-        modelUrl = `${window.location.origin}/models/esp32/model.json?t=${timestamp}`;
+        const randomId = Math.random().toString(36).substring(7);
+        modelUrl = `${window.location.origin}/models/esp32/model.json?t=${timestamp}&r=${randomId}`;
+        
         loadOptions.fetchFunc = async (url: string, options: any) => {
-          console.log('📱 PWA custom fetch for model:', url);
+          console.log('📱 PWA ULTRA-AGGRESSIVE fetch for model:', url);
           
-          // Try multiple strategies to bypass service worker
+          // Strategy 1: Bypass service worker completely
           try {
+            const controller = navigator.serviceWorker?.controller;
+            if (controller) {
+              console.log('🔧 PWA: Detected service worker, using aggressive bypass...');
+            }
+            
             const response = await fetch(url, {
               ...options,
-              cache: 'no-store', // More aggressive than no-cache
+              cache: 'no-store',
               mode: 'cors',
               credentials: 'omit',
+              redirect: 'follow',
+              referrerPolicy: 'no-referrer',
               headers: {
-                'Cache-Control': 'no-store, no-cache, must-revalidate',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
                 'Pragma': 'no-cache',
-                'Expires': '0'
+                'Expires': '0',
+                'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+                'If-None-Match': '*'
               }
             });
             
@@ -194,23 +205,33 @@ class MLService {
               throw new Error(`PWA model fetch failed: ${response.status} ${response.statusText}`);
             }
             
-            console.log('✅ PWA model fetch successful');
+            console.log('✅ PWA ULTRA-AGGRESSIVE fetch successful');
             return response;
+            
           } catch (error) {
-            console.error('❌ PWA model fetch failed, trying fallback:', error);
+            console.error('❌ PWA ULTRA-AGGRESSIVE fetch failed, trying XMLHttpRequest fallback:', error);
             
-            // Fallback: try without timestamp
-            const fallbackUrl = url.split('?')[0];
-            const fallbackResponse = await fetch(fallbackUrl, {
-              cache: 'reload',
-              mode: 'cors'
+            // Strategy 2: XMLHttpRequest fallback (bypasses service worker differently)
+            return new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              const fallbackUrl = url.split('?')[0] + `?xhr=${Date.now()}`;
+              
+              xhr.open('GET', fallbackUrl, true);
+              xhr.setRequestHeader('Cache-Control', 'no-cache');
+              xhr.responseType = 'blob';
+              
+              xhr.onload = () => {
+                if (xhr.status === 200) {
+                  console.log('✅ PWA XMLHttpRequest fallback successful');
+                  resolve(new Response(xhr.response));
+                } else {
+                  reject(new Error(`PWA XMLHttpRequest failed: ${xhr.status}`));
+                }
+              };
+              
+              xhr.onerror = () => reject(new Error('PWA XMLHttpRequest network error'));
+              xhr.send();
             });
-            
-            if (!fallbackResponse.ok) {
-              throw new Error(`PWA fallback fetch failed: ${fallbackResponse.status}`);
-            }
-            
-            return fallbackResponse;
           }
         };
       }
@@ -534,20 +555,29 @@ class MLService {
       const loadOptions: any = {};
       
       if (isIOSPWA) {
-        // PWA: Use absolute URL and aggressive cache-busting + timestamp
+        // PWA: ULTRA-AGGRESSIVE bypass - same strategy as ESP32 model
         const timestamp = Date.now();
-        modelUrl = `${window.location.origin}/models/motor_wire_model_web/model.json?t=${timestamp}`;
+        const randomId = Math.random().toString(36).substring(7);
+        modelUrl = `${window.location.origin}/models/motor_wire_model_web/model.json?t=${timestamp}&r=${randomId}`;
+        
         loadOptions.fetchFunc = async (url: string, options: any) => {
+          console.log('📱 PWA ULTRA-AGGRESSIVE fetch for motor wire model:', url);
+          
+          // Strategy 1: Bypass service worker completely
           try {
             const response = await fetch(url, {
               ...options,
               cache: 'no-store',
               mode: 'cors',
               credentials: 'omit',
+              redirect: 'follow',
+              referrerPolicy: 'no-referrer',
               headers: {
-                'Cache-Control': 'no-store, no-cache, must-revalidate',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
                 'Pragma': 'no-cache',
-                'Expires': '0'
+                'Expires': '0',
+                'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+                'If-None-Match': '*'
               }
             });
             
@@ -555,22 +585,33 @@ class MLService {
               throw new Error(`PWA motor wire model fetch failed: ${response.status}`);
             }
             
+            console.log('✅ PWA motor wire ULTRA-AGGRESSIVE fetch successful');
             return response;
+            
           } catch (error) {
-            console.error('❌ PWA motor wire model fetch failed, trying fallback:', error);
+            console.error('❌ PWA motor wire ULTRA-AGGRESSIVE fetch failed, trying XMLHttpRequest fallback:', error);
             
-            // Fallback: try without timestamp
-            const fallbackUrl = url.split('?')[0];
-            const fallbackResponse = await fetch(fallbackUrl, {
-              cache: 'reload',
-              mode: 'cors'
+            // Strategy 2: XMLHttpRequest fallback
+            return new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              const fallbackUrl = url.split('?')[0] + `?xhr=${Date.now()}`;
+              
+              xhr.open('GET', fallbackUrl, true);
+              xhr.setRequestHeader('Cache-Control', 'no-cache');
+              xhr.responseType = 'blob';
+              
+              xhr.onload = () => {
+                if (xhr.status === 200) {
+                  console.log('✅ PWA motor wire XMLHttpRequest fallback successful');
+                  resolve(new Response(xhr.response));
+                } else {
+                  reject(new Error(`PWA motor wire XMLHttpRequest failed: ${xhr.status}`));
+                }
+              };
+              
+              xhr.onerror = () => reject(new Error('PWA motor wire XMLHttpRequest network error'));
+              xhr.send();
             });
-            
-            if (!fallbackResponse.ok) {
-              throw new Error(`PWA motor wire fallback fetch failed: ${fallbackResponse.status}`);
-            }
-            
-            return fallbackResponse;
           }
         };
       }

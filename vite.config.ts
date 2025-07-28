@@ -45,11 +45,16 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigateFallback: null,
-        // Exclude camera-related files from caching
-        navigateFallbackDenylist: [/^\/(camera|stream)/],
+        // Exclude camera-related files AND model files from caching/interception
+        navigateFallbackDenylist: [/^\/(camera|stream)/, /^\/models\//],
+        // Don't precache model files - let them be fetched directly
+        globIgnores: ['**/models/**/*'],
         runtimeCaching: [
           {
-            urlPattern: /^https?.*/,
+            // Exclude model files from general HTTPS caching - let them bypass service worker
+            urlPattern: ({url}) => {
+              return url.protocol === 'https:' && !url.pathname.includes('/models/');
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'https-calls',
@@ -63,22 +68,7 @@ export default defineConfig({
               },
             },
           },
-          // ML model loading strategy - NetworkFirst for PWA reliability
-          {
-            urlPattern: /\/models\/.*\.(json|bin)$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'ml-models',
-              networkTimeoutSeconds: 10, // Longer timeout for model files
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days (shorter than before)
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
+          // REMOVED: ML model caching - models now bypass service worker completely
         ],
       },
       devOptions: {
