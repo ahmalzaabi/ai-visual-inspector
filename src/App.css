@@ -1423,6 +1423,10 @@ body {
 .ai-enhanced-title {
   position: relative;
   margin-bottom: 30px;
+  /* Fix Arabic text rendering */
+  overflow: visible;
+  padding-top: 10px; /* Add padding to prevent text clipping */
+  line-height: 1.3; /* Better line height for Arabic text */
 }
 
 .title-gradient {
@@ -1431,6 +1435,13 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: titleShimmer 3s ease-in-out infinite;
+  /* Arabic text fixes */
+  display: inline-block;
+  padding: 5px 0; /* Add vertical padding */
+  line-height: 1.4; /* Better spacing for Arabic diacritics */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .title-underline {
@@ -1513,13 +1524,27 @@ body {
   height: 40px;
 }
 
-.icon-circuit {
+/* Missions Icon - Camera/Inspection Symbol */
+.missions-icon .inspection-symbol {
   position: relative;
   width: 100%;
   height: 100%;
 }
 
-.icon-core {
+.camera-lens {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--accent-primary);
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: lensZoom 3s ease-in-out infinite;
+}
+
+.lens-center {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1528,38 +1553,131 @@ body {
   height: 8px;
   background: var(--accent-primary);
   border-radius: 50%;
-  box-shadow: 0 0 15px var(--accent-primary);
+  box-shadow: 0 0 10px var(--accent-primary);
 }
 
-.icon-rings {
+.lens-ring {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-}
-
-.ring {
-  position: absolute;
+  width: 16px;
+  height: 16px;
   border: 1px solid var(--accent-primary);
   border-radius: 50%;
+  opacity: 0.4;
+  animation: ringRotate 6s linear infinite;
+}
+
+.detection-grid {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+}
+
+.grid-line {
+  position: absolute;
+  background: var(--accent-primary);
   opacity: 0.3;
-  animation: ringRotate 4s linear infinite;
 }
 
-.r-1 {
-  width: 20px;
-  height: 20px;
-  top: -10px;
-  left: -10px;
+.h-1, .h-2 {
+  height: 1px;
+  width: 32px;
+  left: 0;
 }
 
-.r-2 {
-  width: 30px;
-  height: 30px;
-  top: -15px;
-  left: -15px;
-  animation-direction: reverse;
-  animation-duration: 6s;
+.h-1 { top: 10px; }
+.h-2 { bottom: 10px; }
+
+.v-1, .v-2 {
+  width: 1px;
+  height: 32px;
+  top: 0;
+}
+
+.v-1 { left: 10px; }
+.v-2 { right: 10px; }
+
+.scan-overlay {
+  position: absolute;
+  top: 0;
+  left: -40px;
+  width: 2px;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--accent-primary), transparent);
+  animation: scanMove 4s ease-in-out infinite;
+}
+
+/* Admin Icon - Gear Symbol */
+.admin-icon .admin-symbol {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.gear-outer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  animation: gearRotate 8s linear infinite;
+}
+
+.gear-tooth {
+  position: absolute;
+  width: 4px;
+  height: 8px;
+  background: var(--accent-primary);
+  border-radius: 1px;
+  transform-origin: center 14px;
+}
+
+.gt-1 { transform: rotate(0deg); }
+.gt-2 { transform: rotate(60deg); }
+.gt-3 { transform: rotate(120deg); }
+.gt-4 { transform: rotate(180deg); }
+.gt-5 { transform: rotate(240deg); }
+.gt-6 { transform: rotate(300deg); }
+
+.gear-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent-primary);
+  border-radius: 50%;
+  opacity: 0.6;
+}
+
+.gear-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-primary);
+}
+
+.settings-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  background: var(--accent-success);
+  border-radius: 50%;
+  animation: indicatorBlink 2s ease-in-out infinite;
 }
 
 .card-tech-pattern {
@@ -1712,6 +1830,40 @@ body {
 @keyframes ringRotate {
   from { transform: translate(-50%, -50%) rotate(0deg); }
   to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes lensZoom {
+  0%, 100% { 
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  50% { 
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes scanMove {
+  0% { left: -40px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: calc(100% + 40px); opacity: 0; }
+}
+
+@keyframes gearRotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes indicatorBlink {
+  0%, 100% { 
+    opacity: 0.5; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.2);
+  }
 }
 
 @keyframes techLinePulse {

@@ -7,14 +7,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // DISABLE SERVICE WORKER COMPLETELY - Like MediaPipe (online-only, faster)
-      disable: false, // Keep PWA features for installability
+      // COMPLETE PWA DISABLE - NO SERVICE WORKER AT ALL (MediaPipe style)
+      disable: true, // Completely disable PWA service worker
+      selfDestroying: true, // Remove any existing service workers
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'AI Visual Inspector',
         short_name: 'AI Inspector',
-        description: '🌐 Online AI Visual Inspector - Fast like MediaPipe (Internet Required)',
+        description: '🌐 Online AI Visual Inspector - No Offline Mode (Fast like MediaPipe)',
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',
@@ -41,17 +42,6 @@ export default defineConfig({
             purpose: 'any maskable'
           }
         ]
-      },
-      // COMPLETELY REMOVE SERVICE WORKER - NO OFFLINE FUNCTIONALITY
-      workbox: {
-        // Empty service worker - no caching, no offline features
-        skipWaiting: true,
-        clientsClaim: true,
-        globPatterns: [], // Don't cache anything
-        runtimeCaching: [], // No runtime caching
-        navigationPreload: false,
-        // Generate minimal service worker that does nothing
-        mode: 'production'
       },
       devOptions: {
         enabled: false

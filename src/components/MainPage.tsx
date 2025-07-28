@@ -61,15 +61,15 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
         <div className="ai-status-bar">
           <div className="status-item">
             <div className="status-dot active"></div>
-            <span>TensorFlow.js</span>
+            <span>Intelligent Visual Inspection</span>
           </div>
           <div className="status-item">
             <div className="status-dot active"></div>
-            <span>WebGL Accelerated</span>
+            <span>Computer Vision</span>
           </div>
           <div className="status-item">
             <div className="status-dot active"></div>
-            <span>Real-time Detection</span>
+            <span>Machine Learning</span>
           </div>
         </div>
         
@@ -81,13 +81,19 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
           >
             <div className="card-glow-effect"></div>
             <div className="nav-card-content">
-              <div className="card-icon">
-                <div className="icon-circuit">
-                  <div className="icon-core"></div>
-                  <div className="icon-rings">
-                    <div className="ring r-1"></div>
-                    <div className="ring r-2"></div>
+              <div className="card-icon missions-icon">
+                <div className="inspection-symbol">
+                  <div className="camera-lens">
+                    <div className="lens-center"></div>
+                    <div className="lens-ring"></div>
                   </div>
+                  <div className="detection-grid">
+                    <div className="grid-line h-1"></div>
+                    <div className="grid-line h-2"></div>
+                    <div className="grid-line v-1"></div>
+                    <div className="grid-line v-2"></div>
+                  </div>
+                  <div className="scan-overlay"></div>
                 </div>
               </div>
               <h3 className="nav-card-title">{t('main.navigation.missions')}</h3>
@@ -104,13 +110,20 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
           >
             <div className="card-glow-effect"></div>
             <div className="nav-card-content">
-              <div className="card-icon">
-                <div className="icon-circuit">
-                  <div className="icon-core"></div>
-                  <div className="icon-rings">
-                    <div className="ring r-1"></div>
-                    <div className="ring r-2"></div>
+              <div className="card-icon admin-icon">
+                <div className="admin-symbol">
+                  <div className="gear-outer">
+                    <div className="gear-tooth gt-1"></div>
+                    <div className="gear-tooth gt-2"></div>
+                    <div className="gear-tooth gt-3"></div>
+                    <div className="gear-tooth gt-4"></div>
+                    <div className="gear-tooth gt-5"></div>
+                    <div className="gear-tooth gt-6"></div>
                   </div>
+                  <div className="gear-inner">
+                    <div className="gear-center"></div>
+                  </div>
+                  <div className="settings-indicator"></div>
                 </div>
               </div>
               <h3 className="nav-card-title">{t('main.navigation.admin')}</h3>

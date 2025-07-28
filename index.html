@@ -34,6 +34,37 @@
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- NO SERVICE WORKER MODE: Unregister any existing service workers -->
+    <script>
+      // COMPLETE SERVICE WORKER REMOVAL (MediaPipe Style)
+      (async function() {
+        if ('serviceWorker' in navigator) {
+          try {
+            console.log('🔥 REMOVING ALL SERVICE WORKERS (Online-Only Mode)...');
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            console.log(`📦 Found ${registrations.length} service workers to remove`);
+            
+            await Promise.all(registrations.map(async (registration) => {
+              console.log('🗑️ Unregistering SW:', registration.scope);
+              await registration.unregister();
+            }));
+            
+            // Clear all caches
+            if ('caches' in window) {
+              const cacheNames = await caches.keys();
+              await Promise.all(cacheNames.map(name => caches.delete(name)));
+              console.log('🧹 Cleared all caches');
+            }
+            
+            console.log('✅ ONLINE-ONLY MODE ACTIVE - No service workers!');
+          } catch (error) {
+            console.log('⚠️ SW removal error (probably already clean):', error);
+          }
+        }
+      })();
+    </script>
+    
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
