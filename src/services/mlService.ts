@@ -223,38 +223,76 @@ class MLService {
     }
 
     try {
-      console.log('🔍 Starting ESP32 detection...');
+      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                      (window.navigator as any).standalone === true;
       
-      // Get source element and dimensions
-      const sourceElement = videoElement && videoElement.readyState >= 2 ? videoElement : canvas;
-      const imageWidth = videoElement?.videoWidth || canvas.width;
-      const imageHeight = videoElement?.videoHeight || canvas.height;
+      console.log('🔍 Starting ESP32 detection...', {
+        isPWA: isIOSPWA,
+        hasVideo: !!videoElement,
+                 videoReady: videoElement ? (videoElement.readyState ?? 0) >= 2 : false,
+        canvasSize: `${canvas.width}x${canvas.height}`,
+        videoSize: videoElement ? `${videoElement.videoWidth}x${videoElement.videoHeight}` : 'N/A'
+      });
+      
+      // PWA-SAFE: Always use canvas as source for consistent behavior
+      let sourceElement: HTMLCanvasElement | HTMLVideoElement;
+      
+      if (isIOSPWA) {
+        // PWA MODE: Force use canvas for consistent pixel access
+        console.log('📱 PWA MODE: Using canvas as source for consistent pixel access');
+        
+                 // Draw video frame to canvas first (if video available)
+         if (videoElement && videoElement.readyState && videoElement.readyState >= 2) {
+           const ctx = canvas.getContext('2d');
+           if (ctx) {
+             canvas.width = videoElement.videoWidth || 640;
+             canvas.height = videoElement.videoHeight || 480;
+             ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+             console.log('📱 PWA: Drew video frame to canvas', `${canvas.width}x${canvas.height}`);
+           }
+         }
+        sourceElement = canvas;
+      } else {
+        // SAFARI MODE: Use video directly if available
+        sourceElement = videoElement && videoElement.readyState >= 2 ? videoElement : canvas;
+        console.log('🌐 SAFARI MODE: Using', sourceElement === videoElement ? 'video' : 'canvas', 'as source');
+      }
+      
+      const imageWidth = sourceElement === videoElement ? videoElement.videoWidth : canvas.width;
+      const imageHeight = sourceElement === videoElement ? videoElement.videoHeight : canvas.height;
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       
-      console.log(`Processing image: ${imageWidth} x ${imageHeight}, canvas: ${canvasWidth} x ${canvasHeight}`);
+      console.log(`📐 Final processing: ${imageWidth} x ${imageHeight}, canvas: ${canvasWidth} x ${canvasHeight}`);
       
-      // Preprocess image
+      // Preprocess image with enhanced debugging
+      console.log('🔄 Starting image preprocessing...');
       const inputTensor = this.preprocessImage(sourceElement);
+      console.log('✅ Image preprocessing completed, tensor shape:', inputTensor.shape);
 
       // Run inference
+      console.log('🧠 Starting model inference...');
       const startTime = performance.now();
       const predictions = this.esp32Model.predict(inputTensor) as tf.Tensor;
       const inferenceTime = performance.now() - startTime;
       
-      console.log(`⚡ ESP32 inference time: ${inferenceTime.toFixed(1)}ms`);
-      console.log('📊 Predictions shape:', predictions.shape);
+      console.log(`⚡ ESP32 inference completed: ${inferenceTime.toFixed(1)}ms`);
+      console.log('📊 Raw predictions shape:', predictions.shape);
       
       // Parse ESP32 output
+      console.log('🔍 Parsing detection results...');
       const analysis = await this.parseESP32Output(predictions, imageWidth, imageHeight, canvasWidth, canvasHeight);
+      console.log('📊 Detection analysis complete:', {
+        detections: analysis.detections.length,
+        esp32Detected: analysis.esp32Detected,
+        avgConfidence: analysis.detections.length > 0 ? 
+          (analysis.detections.reduce((sum, d) => sum + d.confidence, 0) / analysis.detections.length).toFixed(2) : '0'
+      });
 
       // Aggressive cleanup for iPhone PWA
       inputTensor.dispose();
       predictions.dispose();
       
-      // Force garbage collection on iPhone
-      const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-                      (window.navigator as any).standalone === true;
       if (isIOSPWA) {
         tf.disposeVariables(); // Cleanup orphaned tensors
       }
@@ -263,6 +301,12 @@ class MLService {
 
     } catch (error) {
       console.error('❌ ESP32 detection failed:', error);
+      const errorDetails = error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : { message: String(error) };
+      console.error('❌ Error details:', errorDetails);
       return {
         detections: [],
         esp32Detected: false,
@@ -272,27 +316,45 @@ class MLService {
     }
   }
   
-  // Image preprocessing (optimized for iPhone PWA)
+  // Image preprocessing (Safari-identical for PWA and Safari)
   private preprocessImage(imageElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement): tf.Tensor4D {
     return tf.tidy(() => {
-      // Convert image to tensor
-      let tensor = tf.browser.fromPixels(imageElement);
-      
-      // iPhone PWA optimization: Use smaller resolution if performance is poor
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
-      const targetSize = isIOSPWA ? 416 : 640; // Smaller resolution for iPhone
+      
+      console.log('🔄 Preprocessing image:', {
+        elementType: imageElement.constructor.name,
+        elementSize: `${imageElement.width || 0}x${imageElement.height || 0}`,
+        isPWA: isIOSPWA
+      });
+      
+      // Convert image to tensor with error handling
+      let tensor: tf.Tensor3D;
+      try {
+        tensor = tf.browser.fromPixels(imageElement);
+        console.log('✅ Successfully created tensor from pixels:', tensor.shape);
+      } catch (error) {
+        console.error('❌ Failed to create tensor from pixels:', error);
+        throw new Error(`Failed to process image: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      
+      // SAFARI-IDENTICAL: Use same target size for both PWA and Safari (640x640)
+      const targetSize = 640; // Consistent with Safari for identical behavior
+      console.log('📐 Resizing to target size:', targetSize);
       
       // Resize to model input size
-      tensor = tf.image.resizeBilinear(tensor, [targetSize, targetSize]);
+      tensor = tf.image.resizeBilinear(tensor, [targetSize, targetSize]) as tf.Tensor3D;
+      console.log('✅ Resized tensor:', tensor.shape);
       
       // Normalize to [0, 1] using more efficient method
-      tensor = tf.mul(tensor, tf.scalar(1/255));
+      tensor = tf.div(tensor, tf.scalar(255)) as tf.Tensor3D;
+      console.log('✅ Normalized tensor values');
       
       // Add batch dimension
-      const tensor4d = tensor.expandDims(0);
+      const tensor4d = tensor.expandDims(0) as tf.Tensor4D;
+      console.log('✅ Added batch dimension:', tensor4d.shape);
       
-      return tensor4d as tf.Tensor4D;
+      return tensor4d;
     });
   }
 
@@ -313,10 +375,12 @@ class MLService {
     const confidenceThreshold = 0.6; // Balanced threshold - not too restrictive (was 0.85)
     const iouThreshold = 0.4;
     
-    // Dynamic input size based on device (iPhone uses 416, desktop uses 640)
+    // SAFARI-IDENTICAL: Use consistent input size for both PWA and Safari
+    const inputSize = 640; // Always use 640 for identical behavior
+    
     const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                     (window.navigator as any).standalone === true;
-    const inputSize = isIOSPWA ? 416 : 640;
+    console.log('🔍 Parsing output with input size:', inputSize, 'isPWA:', isIOSPWA);
     
     let numDetections: number, numFeatures: number;
     
