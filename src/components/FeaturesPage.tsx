@@ -93,7 +93,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
-  
+
   // iPhone PWA performance optimization states
   const [frameSkipCount, setFrameSkipCount] = useState(0);
   const [avgInferenceTime, setAvgInferenceTime] = useState(0);
@@ -558,16 +558,16 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const needsResize = canvas.width !== video.videoWidth || canvas.height !== video.videoHeight;
       
       if (needsResize) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.style.width = videoRect.width + 'px';
-        canvas.style.height = videoRect.height + 'px';
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.style.width = videoRect.width + 'px';
+      canvas.style.height = videoRect.height + 'px';
         console.log('📐 AR Canvas resized to:', video.videoWidth, 'x', video.videoHeight);
       }
 
       // CRITICAL: Clear canvas first to prevent AR duplication
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       // Get ESP32 detections for AR overlay
       console.log('🔍 Running AR detection...');
       const esp32Analysis = await mlService.detectESP32(canvas, video);
@@ -726,10 +726,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const needsResize = canvas.width !== video.videoWidth || canvas.height !== video.videoHeight;
       
       if (needsResize) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.style.width = videoRect.width + 'px';
-        canvas.style.height = videoRect.height + 'px';
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.style.width = videoRect.width + 'px';
+      canvas.style.height = videoRect.height + 'px';
         console.log('📐 Canvas resized to:', video.videoWidth, 'x', video.videoHeight);
       }
 
@@ -768,7 +768,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       setDetectionCount(0);
     }
   };
-  
+
   // Helper function to merge detections for stability
   const mergeDetectionsForStability = (detectionHistory: any[][]): any[] => {
     if (detectionHistory.length === 0) return [];
@@ -843,14 +843,14 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     const startTime = performance.now();
     
     try {
-      if (currentStep === 1) {
+    if (currentStep === 1) {
         await performESP32DetectionWithStability();
-      } else if (currentStep === 2) {
-        await performMotorWireDetection();
-      } else if (currentStep === 3) {
-        await performWristStrapDetection();
-      } else if (currentStep === 4) {
-        await performARShowcase();
+    } else if (currentStep === 2) {
+      await performMotorWireDetection();
+    } else if (currentStep === 3) {
+      await performWristStrapDetection();
+    } else if (currentStep === 4) {
+      await performARShowcase();
       }
       
       // Track inference performance for adaptive optimization
