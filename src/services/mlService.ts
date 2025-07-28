@@ -162,22 +162,21 @@ class MLService {
     try {
       await this.initializeTensorFlow();
 
-      // PWA-specific model loading with absolute URL
+      // Enhanced model loading for PWA and regular browsers
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      const baseUrl = isIOSPWA ? window.location.origin : '';
-      const modelUrl = `${baseUrl}/models/esp32/model.json`;
-      console.log('📥 Loading model from:', modelUrl, isIOSPWA ? '(PWA mode)' : '(Browser mode)');
-      
-      // PWA: Add cache-busting and explicit headers
+      let modelUrl = '/models/esp32/model.json';
       const loadOptions: any = {};
+      
       if (isIOSPWA) {
+        // PWA: Use absolute URL and cache-busting
+        modelUrl = `${window.location.origin}/models/esp32/model.json`;
         loadOptions.fetchFunc = async (url: string, options: any) => {
           console.log('📱 PWA custom fetch for model:', url);
           const response = await fetch(url, {
             ...options,
-            cache: 'no-cache', // Bypass service worker cache
+            cache: 'no-cache',
             headers: {
               'Cache-Control': 'no-cache',
               'Pragma': 'no-cache'
@@ -190,7 +189,9 @@ class MLService {
         };
       }
       
-      this.esp32Model = await tf.loadGraphModel(modelUrl, loadOptions);
+      console.log('📥 Loading ESP32 model from:', modelUrl, isIOSPWA ? '(PWA mode)' : '(Browser mode)');
+      
+      this.esp32Model = await tf.loadGraphModel(modelUrl, Object.keys(loadOptions).length > 0 ? loadOptions : undefined);
       console.log('✅ ESP32 Model loaded successfully');
       
       // Get model info
@@ -318,7 +319,7 @@ class MLService {
     const outputShape = predictions.shape;
     console.log('📊 Model output shape:', outputShape);
     
-    const confidenceThreshold = 0.85; // Aggressive threshold to eliminate false positives (was 0.7)
+    const confidenceThreshold = 0.6; // Balanced threshold - not too restrictive (was 0.85)
     const iouThreshold = 0.4;
     
     // Dynamic input size based on device (iPhone uses 416, desktop uses 640)
@@ -499,17 +500,16 @@ class MLService {
     try {
       await this.initializeTensorFlow();
 
-      // PWA-specific model loading with absolute URL
+      // Enhanced model loading for PWA and regular browsers
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      const baseUrl = isIOSPWA ? window.location.origin : '';
-      const modelUrl = `${baseUrl}/models/motor_wire_model_web/model.json`;
-      console.log('📥 Loading motor wire model from:', modelUrl, isIOSPWA ? '(PWA mode)' : '(Browser mode)');
-      
-      // PWA: Add cache-busting
+      let modelUrl = '/models/motor_wire_model_web/model.json';
       const loadOptions: any = {};
+      
       if (isIOSPWA) {
+        // PWA: Use absolute URL and cache-busting
+        modelUrl = `${window.location.origin}/models/motor_wire_model_web/model.json`;
         loadOptions.fetchFunc = async (url: string, options: any) => {
           const response = await fetch(url, {
             ...options,
@@ -523,7 +523,9 @@ class MLService {
         };
       }
       
-      this.motorWireModel = await tf.loadGraphModel(modelUrl, loadOptions);
+      console.log('📥 Loading motor wire model from:', modelUrl, isIOSPWA ? '(PWA mode)' : '(Browser mode)');
+      
+      this.motorWireModel = await tf.loadGraphModel(modelUrl, Object.keys(loadOptions).length > 0 ? loadOptions : undefined);
       console.log('✅ Motor Wire Model loaded successfully');
       
       // Get model info

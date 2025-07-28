@@ -704,7 +704,13 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       }
 
       // Run ESP32 detection
+      console.log('🔍 Running ESP32 detection...');
       const analysis = await mlService.detectESP32(canvas, video);
+      console.log('📊 ESP32 analysis result:', {
+        detections: analysis.detections.length,
+        confidenceScores: analysis.detections.map(d => d.confidence.toFixed(2)),
+        status: analysis.status
+      });
       
       // Add to detection buffer for stability
       detectionBuffer.current.push(analysis.detections);
@@ -716,6 +722,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const mergedDetections = mergeDetectionsForStability(detectionBuffer.current);
       stableDetections.current = mergedDetections;
       
+      console.log('📦 Merged detections for stability:', mergedDetections.length);
       setDetectionCount(mergedDetections.length);
 
       // Clear and draw stable tracking boxes
@@ -761,8 +768,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     const currentFrame = frameCount + 1;
     setFrameCount(currentFrame);
     
-    // "Every 3 frames" optimization - only run inference every 3rd frame
-    const shouldRunInference = currentFrame % 3 === 0;
+    // "Every 3 frames" optimization - but always run first 3 frames to populate buffer
+    const shouldRunInference = currentFrame <= 3 || currentFrame % 3 === 0;
     
     if (!shouldRunInference) {
       // Use stable detections from buffer - no inference, just redraw
