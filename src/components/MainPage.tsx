@@ -26,15 +26,8 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
             className="vertical-nav-card missions-card"
             onClick={() => onNavigate('missions')}
           >
-            <div className="nav-card-icon">
-              <div className="icon-esp32"></div>
-            </div>
             <div className="nav-card-content">
               <h3 className="nav-card-title">{t('main.navigation.missions')}</h3>
-              <p className="nav-card-subtitle">{t('main.navigation.missionsDesc')}</p>
-            </div>
-            <div className="nav-card-arrow">
-              <div className="arrow-icon"></div>
             </div>
           </div>
 
@@ -42,15 +35,8 @@ const MainPage: React.FC<MainPageProps> = ({ onNavigate }) => {
             className="vertical-nav-card admin-card"
             onClick={() => onNavigate('admin')}
           >
-            <div className="nav-card-icon">
-              <div className="icon-wrist"></div>
-            </div>
             <div className="nav-card-content">
               <h3 className="nav-card-title">{t('main.navigation.admin')}</h3>
-              <p className="nav-card-subtitle">{t('main.navigation.adminDesc')}</p>
-            </div>
-            <div className="nav-card-arrow">
-              <div className="arrow-icon"></div>
             </div>
           </div>
         </div>

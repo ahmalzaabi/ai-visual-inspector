@@ -6,8 +6,95 @@ import { arService } from '../services/arService';
 import type { ARShowcaseAnalysis } from '../services/arService';
 import FeatureCard from './FeatureCard';
 
+// SVG Icon Components
+const CameraIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+);
+
+const StopIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="6" y="6" width="12" height="12" rx="2"/>
+  </svg>
+);
+
+const PlayIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="5,3 19,12 5,21"/>
+  </svg>
+);
+
+const LoadingIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+    <path d="M21 12a9 9 0 11-6.219-8.56"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="20,6 9,17 4,12"/>
+  </svg>
+);
+
+const WarningIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+  </svg>
+);
+
+const ErrorIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="15" y1="9" x2="9" y2="15"/>
+    <line x1="9" y1="9" x2="15" y2="15"/>
+  </svg>
+);
+
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="M21 21l-4.35-4.35"/>
+  </svg>
+);
+
 interface FeaturesPageProps {
   onBack: () => void;
+}
+
+interface DetectionResults {
+  detectionCount: number;
+  motorWireAnalysis: {
+    connectedCount: number;
+    totalConnections: number;
+    isFullyConnected: boolean;
+  };
+  wristStrapAnalysis: {
+    isWearingStrap: boolean;
+    status: 'checking' | 'detected' | 'not_detected';
+  };
+  arShowcaseAnalysis: {
+    isActive: boolean;
+    esp32Info: Array<{
+      chipModel: string;
+      connectivity: string;
+      frequency: string;
+      status: 'active' | 'detected' | 'ready';
+      voltage: string;
+      temperature: string;
+    }>;
+  };
+}
+
+interface ReportData {
+  title: string;
+  id: string;
+  timestamp: string;
+  sections: {
+    title: string;
+    data: Array<{label: string; value: string}>;
+  }[];
 }
 
 const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
@@ -26,6 +113,8 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [showReport, setShowReport] = useState(false);
+  const [reportData, setReportData] = useState<ReportData | null>(null);
 
   // Assembly steps configuration
   const assemblySteps = [
@@ -51,7 +140,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       description: t('assembly.steps.step3.description'),
       requirement: t('assembly.steps.step3.requirement'),
       requiredCount: 2,
-      icon: "🔗"
+      icon: "connection"
     },
     {
       id: 4,
@@ -650,6 +739,62 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
   };
 
+  const generateReport = async () => {
+    if (!arShowcaseAnalysis) {
+      alert('No AR showcase analysis data available.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const report = arService.generateESP32Report(arShowcaseAnalysis.esp32Info);
+      setReportData({
+        title: 'ESP32 AR Report',
+        id: 'ar_report',
+        timestamp: new Date().toISOString(),
+        sections: [
+          {
+            title: 'ESP32 Detections',
+            data: [
+              { label: 'Total ESP32 Detected', value: arShowcaseAnalysis.esp32Info.length.toString() },
+              { label: 'Active ESP32', value: arShowcaseAnalysis.esp32Info.filter(info => info.status === 'active').length.toString() },
+              { label: 'Detected ESP32', value: arShowcaseAnalysis.esp32Info.filter(info => info.status === 'detected').length.toString() },
+              { label: 'Ready ESP32', value: arShowcaseAnalysis.esp32Info.filter(info => info.status === 'ready').length.toString() },
+            ]
+          },
+          {
+            title: 'Showcase Effects',
+            data: [
+              { label: 'Hologram Active', value: arShowcaseAnalysis.showcaseEffects.hologram ? 'Yes' : 'No' },
+              { label: 'Data Stream Active', value: arShowcaseAnalysis.showcaseEffects.dataStream ? 'Yes' : 'No' },
+            ]
+          },
+          {
+            title: 'ESP32 Details',
+            data: arShowcaseAnalysis.esp32Info.map(info => ({
+              label: `${info.chipModel} (${info.connectivity})`,
+              value: `${info.frequency}, Voltage: ${info.voltage}, Temp: ${info.temperature}`
+            }))
+          }
+        ]
+      });
+      setShowReport(true);
+      console.log('Report generated successfully.');
+    } catch (err) {
+      setError('Failed to generate report.');
+      console.error('Report generation failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closeReport = () => {
+    setShowReport(false);
+    setReportData(null);
+  };
+
   return (
     <div className="app">
       {!activeFeature && (
@@ -687,7 +832,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               ← {t('actions.back')}
             </button>
             <h2 className="feature-title">
-              <span className="icon-esp32"></span> {t('features.assembly')}
+              {t('features.assembly')}
             </h2>
           </div>
 
@@ -704,17 +849,17 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             >
               {isLoading ? (
                 <>
-                  <span className="icon-loading"></span>
+                  <LoadingIcon />
                   Loading...
                 </>
               ) : (isPlaying ? (
                 <>
-                  <span className="icon-stop"></span>
+                  <StopIcon />
                   {t('actions.stopCamera')}
                 </>
               ) : (
                 <>
-                  <span className="icon-camera"></span>
+                  <CameraIcon />
                   {t('actions.startCamera')}
                 </>
               ))}
@@ -728,17 +873,17 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               >
                 {isLoading ? (
                   <>
-                    <span className="icon-loading"></span>
+                    <LoadingIcon />
                     Loading...
                   </>
                 ) : (isDetecting ? (
                   <>
-                    <span className="icon-stop"></span>
+                    <StopIcon />
                     {t('actions.stopDetection')}
                   </>
                 ) : (
                   <>
-                    <span className="icon-detect"></span>
+                    <PlayIcon />
                     {t('actions.startDetection')}
                   </>
                 ))}
@@ -772,7 +917,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {currentStep === 3 && wristStrapAnalysis && (
                  <div className="wrist-strap-status">
                    <span className={`detection-count-badge ${wristStrapAnalysis.isWearingStrap ? 'wrist-strap-detected' : 'wrist-strap-missing'}`}>
-                     <span className={`strap-icon ${wristStrapAnalysis.isWearingStrap ? 'icon-wrist' : 'icon-warning'}`}></span>
+                     {wristStrapAnalysis.isWearingStrap ? <CheckIcon /> : <WarningIcon />}
                      <span className="count-label">
                        {wristStrapAnalysis.isWearingStrap ? t('assembly.wristStrap.detected') : t('assembly.wristStrap.notDetected')}
                      </span>
@@ -783,20 +928,20 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                {currentStep === 4 && arShowcaseAnalysis && (
                  <div className="ar-showcase-status">
                    <span className="detection-count-badge ar-esp32-info">
-                                            <span className="ar-icon icon-ar"></span>
+                     <CheckIcon />
                      <span className="count-label">
                        {arShowcaseAnalysis.esp32Info.length} ESP32 AR Detected
                      </span>
                    </span>
                    {arShowcaseAnalysis.showcaseEffects.hologram && (
                      <span className="detection-count-badge ar-hologram">
-                       <span className="hologram-icon">🎯</span>
+                       <PlayIcon />
                        <span className="count-label">{t('assembly.arShowcase.hologramActive')}</span>
                      </span>
                    )}
                    {arShowcaseAnalysis.showcaseEffects.dataStream && (
                      <span className="detection-count-badge ar-datastream">
-                       <span className="stream-icon icon-motor"></span>
+                       <SearchIcon />
                        <span className="count-label">{t('assembly.arShowcase.dataStreamActive')}</span>
                      </span>
                    )}
@@ -831,8 +976,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                 return (
                   <div key={step.id} className={`step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
                     <div className="step-indicator">
-                                               <span className={`step-icon ${isCompleted ? 'completed' : ''}`}>{isCompleted ? '✓' : step.id}</span>
-                                             <span className={`step-icon step-icon-${step.id}`}></span>
+                      <span className={`step-icon ${isCompleted ? 'completed' : ''}`}>
+                        {isCompleted ? <CheckIcon /> : step.id}
+                      </span>
                     </div>
                     
                     <div className="step-content">
@@ -843,11 +989,11 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                          <div className="step-status">
                            {detectionCount >= step.requiredCount ? (
                              <span className="status-success">
-                               <span className="icon-check"></span> {t('assembly.status.step1Complete', { count: detectionCount })}
+                               <CheckIcon /> {t('assembly.status.step1Complete', { count: detectionCount })}
                              </span>
                            ) : (
                              <span className="status-warning">
-                                ⚠️ {detectionCount === 1 ? t('assembly.status.anotherEsp32Needed') : t('assembly.status.place2Boards')}
+                                <WarningIcon /> {detectionCount === 1 ? t('assembly.status.anotherEsp32Needed') : t('assembly.status.place2Boards')}
                                 {detectionCount === 1 && <span className="helper-text"> {t('assembly.status.oneMoreRequired')}</span>}
                              </span>
                            )}
@@ -859,23 +1005,23 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                            {motorWireAnalysis ? (
                              motorWireAnalysis.isFullyConnected ? (
                                <span className="status-success">
-                                 <span className="icon-check"></span> {t('assembly.status.step2Complete', { connected: motorWireAnalysis.connectedCount })}
+                                 <CheckIcon /> {t('assembly.status.step2Complete', { connected: motorWireAnalysis.connectedCount })}
                                </span>
                              ) : motorWireAnalysis.totalConnections > 0 ? (
                                <span className="status-warning">
-                                 ⚠️ {t('assembly.status.partialConnection', { 
+                                 <WarningIcon /> {t('assembly.status.partialConnection', { 
                                    connected: motorWireAnalysis.connectedCount, 
                                    total: motorWireAnalysis.totalConnections 
                                  })}
                                </span>
                              ) : (
                                <span className="status-error">
-                                 ❌ {t('assembly.status.noConnections')}
+                                 <ErrorIcon /> {t('assembly.status.noConnections')}
                                </span>
                              )
                            ) : (
                              <span className="status-pending">
-                               🔍 {t('assembly.status.detectingConnections')}
+                               <SearchIcon /> {t('assembly.status.detectingConnections')}
                              </span>
                            )}
                          </div>
@@ -886,20 +1032,20 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                            {wristStrapAnalysis ? (
                              wristStrapAnalysis.isWearingStrap ? (
                                <span className="status-success">
-                                 <span className="icon-check"></span> {t('assembly.status.step3Complete')}
+                                 <CheckIcon /> {t('assembly.status.step3Complete')}
                                </span>
                              ) : wristStrapAnalysis.status === 'checking' ? (
                                <span className="status-warning">
-                                 ⚠️ {t('assembly.status.checkingWristStrap')}
+                                 <SearchIcon /> {t('assembly.status.checkingWristStrap')}
                                </span>
                              ) : (
                                <span className="status-error">
-                                 ❌ {t('assembly.status.noWristStrap')}
+                                 <ErrorIcon /> {t('assembly.status.noWristStrap')}
                                </span>
                              )
                            ) : (
                              <span className="status-pending">
-                               🔍 {t('assembly.status.detectingWristStrap')}
+                               <SearchIcon /> {t('assembly.status.detectingWristStrap')}
                              </span>
                            )}
                          </div>
@@ -910,16 +1056,16 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                            {arShowcaseAnalysis ? (
                              arShowcaseAnalysis.isActive ? (
                                <span className="status-success">
-                                 <span className="icon icon-ar"></span> AR Showcase Active! {arShowcaseAnalysis.esp32Info.length} ESP32 Detected
+                                 <CheckIcon /> AR Showcase Active! {arShowcaseAnalysis.esp32Info.length} ESP32 Detected
                                </span>
                              ) : (
                                <span className="status-pending">
-                                 <span className="icon icon-detect"></span> {t('assembly.status.scanningESP32')}
+                                 <SearchIcon /> {t('assembly.status.scanningESP32')}
                                </span>
                              )
                            ) : (
                              <span className="status-pending">
-                               <span className="icon icon-ar"></span> {t('assembly.status.loadingARShowcase')}
+                               <LoadingIcon /> {t('assembly.status.loadingARShowcase')}
                              </span>
                            )}
                          </div>
@@ -995,7 +1141,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                              }
                            }}
                          >
-                           <span className="icon icon-ar"></span> {t('assembly.arShowcase.startShowcase')} →
+                           <PlayIcon /> {t('assembly.arShowcase.startShowcase')} →
                          </button>
                        )}
                        
@@ -1003,22 +1149,14 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                          <div className="ar-showcase-controls">
                            <button 
                              className={`btn ${arShowcaseAnalysis.isActive ? 'btn-success' : 'btn-primary'}`}
-                             onClick={() => {
-                               if (arShowcaseAnalysis.isActive) {
-                                 // Set language for bilingual report
-                                 arService.setLanguage(t('assembly.steps.step1.title') === 'ESP32 Board Detection' ? 'en' : 'ar');
-                                 // Generate and display ESP32 AR report
-                                 const report = arService.generateESP32Report(arShowcaseAnalysis.esp32Info);
-                                 alert(report);
-                               }
-                             }}
-                             disabled={!arShowcaseAnalysis.isActive}
+                             onClick={generateReport}
+                             disabled={isLoading}
                            >
-                             {arShowcaseAnalysis.isActive ? (
-                                               <><span className="icon-report"></span> {t('assembly.arShowcase.generateReport')}</>
-              ) : (
-                <><span className="icon-loading"></span> {t('assembly.arShowcase.waitingForDetection')}</>
-              )}
+                             {isLoading ? (
+                               <><LoadingIcon /> {t('assembly.arShowcase.generatingReport')}</>
+                             ) : (
+                               <><CheckIcon /> {t('assembly.arShowcase.generateReport')}</>
+                             )}
                            </button>
                          </div>
                        )}
@@ -1055,7 +1193,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
                        setDetectionCount(0);
                      }}
                    >
-                     {t('assembly.status.completionMessage')}
+                     {t('assembly.completion.allStepsComplete')}
                    </button>
                  </div>
                )}
@@ -1064,7 +1202,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
 
           {error && (
             <div className="error-message">
-              <span className="error-icon">⚠️</span>
+              <ErrorIcon />
               {error}
             </div>
           )}
@@ -1097,17 +1235,17 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
               >
                 {isLoading ? (
                   <>
-                    <span className="icon-loading"></span>
+                    <LoadingIcon />
                     Loading...
                   </>
                 ) : (isPlaying ? (
                   <>
-                    <span className="icon-stop"></span>
+                    <StopIcon />
                     {t('actions.stopCamera')}
                   </>
                 ) : (
                   <>
-                    <span className="icon-camera"></span>
+                    <CameraIcon />
                     {t('actions.startCamera')}
                   </>
                 ))}
@@ -1115,6 +1253,50 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
             </div>
 
             {error && <div className="error-message">{error}</div>}
+          </div>
+        </div>
+      )}
+
+      {showReport && reportData && (
+        <div className="report-modal-overlay">
+          <div className="assembly-report">
+            <div className="report-header">
+              <div>
+                <h2 className="report-title">{reportData.title}</h2>
+                <span className="report-id">ID: {reportData.id}</span>
+              </div>
+              <button className="btn btn-secondary" onClick={closeReport}>
+                <ErrorIcon /> Close
+              </button>
+            </div>
+            
+            {reportData.sections.map((section, sectionIndex) => (
+              <div key={sectionIndex} className="report-section">
+                <h4>{section.title}</h4>
+                <div className="report-data">
+                  {section.data.map((item, itemIndex) => (
+                    <div key={itemIndex} className="report-item">
+                      <div className="report-label">{item.label}</div>
+                      <div className="report-value">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            
+            <div className="report-section">
+              <h4>Report Information</h4>
+              <div className="report-data">
+                <div className="report-item">
+                  <div className="report-label">Generated On</div>
+                  <div className="report-value">{reportData.timestamp}</div>
+                </div>
+                <div className="report-item">
+                  <div className="report-label">Report Status</div>
+                  <div className="report-value">{t('assembly.completion.reportGenerated')}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
