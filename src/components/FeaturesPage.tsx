@@ -247,25 +247,42 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
     }
     setIsDetecting(false);
     
-    // Enhanced canvas clearing for iPhone PWA - remove all tracking boxes
+    // SUPER ROBUST: Canvas clearing to completely remove tracking boxes
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
-        // Clear entire canvas
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        const canvas = canvasRef.current;
         
-        // Reset canvas state for next detection
+        // Method 1: Standard clear
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Method 2: Reset all canvas properties
         ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
         
-        // Force canvas refresh on iPhone
+        // Method 3: Force complete canvas reset
+        const parent = canvas.parentNode;
+        const nextSibling = canvas.nextSibling;
+        if (parent) {
+          parent.removeChild(canvas);
+          parent.insertBefore(canvas, nextSibling);
+        }
+        
+        // Method 4: iPhone PWA specific clearing
         const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                         (window.navigator as any).standalone === true;
         if (isIOSPWA) {
-          // Force repaint by slightly adjusting canvas size
-          const currentWidth = canvasRef.current.width;
-          canvasRef.current.width = currentWidth + 1;
-          canvasRef.current.width = currentWidth;
+          // Force complete refresh by recreating canvas context
+          const tempWidth = canvas.width;
+          const tempHeight = canvas.height;
+          canvas.width = 1;
+          canvas.height = 1;
+          setTimeout(() => {
+            canvas.width = tempWidth;
+            canvas.height = tempHeight;
+          }, 10);
         }
       }
     }
@@ -798,9 +815,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onBack }) => {
       const isIOSPWA = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
                       (window.navigator as any).standalone === true;
       
-      // More aggressive interval throttling for iPhone PWA performance
-      const detectionInterval = isIOSPWA ? 500 : 250; // 2 FPS on iPhone, 4 FPS on desktop
-      console.log(`📱 Detection interval: ${detectionInterval}ms (${1000/detectionInterval} FPS)`);
+      // AGGRESSIVE: Slower detection to prevent iPhone heating
+      const detectionInterval = isIOSPWA ? 1000 : 250; // 1 FPS on iPhone, 4 FPS on desktop
+      console.log(`📱 Detection interval: ${detectionInterval}ms (${1000/detectionInterval} FPS) - Anti-heating optimization`);
       
       detectionIntervalRef.current = setInterval(performDetection, detectionInterval);
       

@@ -83,7 +83,7 @@ class MLService {
       if (isIOSPWA) {
         console.log('📱 Detected iPhone PWA - applying iOS optimizations...');
         
-        // Critical iPhone WebGL optimizations
+        // FIXED: iPhone PWA WebGL optimizations (removed invalid flags)
         tf.env().set('WEBGL_VERSION', 2);
         tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
         tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
@@ -95,20 +95,26 @@ class MLService {
         tf.env().set('WEBGL_PACK_CLIP', true);
         tf.env().set('WEBGL_PACK_DEPTHWISECONV', true);
         tf.env().set('WEBGL_CONV_IM2COL', true);
-        tf.env().set('WEBGL_CONV_IM2COL_MAX_WIDTH', 32);
+        // REMOVED: tf.env().set('WEBGL_CONV_IM2COL_MAX_WIDTH', 32); - This flag doesn't exist!
         tf.env().set('WEBGL_LAZILY_UNPACK', true);
         tf.env().set('WEBGL_DOWNLOAD_FLOAT_ENABLED', false);
       }
       
       await tf.ready();
       
-      // Set backend based on device capabilities
+      // Set backend based on device capabilities - Enhanced PWA handling
       try {
         await tf.setBackend('webgl');
         console.log('✅ Using WebGL backend for GPU acceleration');
       } catch (webglError) {
         console.warn('⚠️ WebGL failed, falling back to CPU:', webglError);
         await tf.setBackend('cpu');
+        
+        // iPhone PWA specific: If WebGL fails, use more conservative settings
+        if (isIOSPWA) {
+          console.log('📱 iPhone PWA using CPU backend - applying conservative settings');
+          tf.env().set('CPU_HANDOFF_SIZE_THRESHOLD', 512); // Smaller threshold for iPhone
+        }
       }
       
       this.isInitialized = true;
@@ -265,7 +271,7 @@ class MLService {
     const outputShape = predictions.shape;
     console.log('📊 Model output shape:', outputShape);
     
-    const confidenceThreshold = 0.7; // Increased from 0.5 to reduce ESP32 false positives
+    const confidenceThreshold = 0.85; // Aggressive threshold to eliminate false positives (was 0.7)
     const iouThreshold = 0.4;
     
     // Dynamic input size based on device (iPhone uses 416, desktop uses 640)
@@ -980,14 +986,25 @@ class MLService {
       const memInfo = tf.memory();
       const memoryMB = memInfo.numBytes / (1024 * 1024);
       
-      // Aggressive cleanup on iPhone if memory > 120MB
-      if (memoryMB > 120) {
-        console.log(`🧹 iPhone memory cleanup triggered: ${memoryMB.toFixed(1)}MB`);
+      // SUPER AGGRESSIVE cleanup to prevent iPhone heating
+      if (memoryMB > 80) { // Lowered from 120MB to 80MB
+        console.log(`🧹 AGGRESSIVE iPhone memory cleanup triggered: ${memoryMB.toFixed(1)}MB`);
         tf.disposeVariables();
         tf.engine().startScope();
         tf.engine().endScope();
+        
+        // Force garbage collection if available
+        if (typeof (window as any).gc === 'function') {
+          (window as any).gc();
+        }
       }
-    }, 3000); // Check every 3 seconds
+      
+      // Emergency cleanup if memory is very high (prevents crashes)
+      if (memoryMB > 150) {
+        console.log(`🚨 EMERGENCY memory cleanup: ${memoryMB.toFixed(1)}MB - disposing models`);
+        this.dispose();
+      }
+    }, 2000); // Check every 2 seconds (more frequent)
   }
 
   // Cleanup
